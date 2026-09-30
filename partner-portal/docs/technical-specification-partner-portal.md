@@ -92,8 +92,8 @@
 
 ### 4.4. Инфраструктура
 
-- Docker для frontend и backend;
-- Docker Compose для локальной разработки и интеграционных тестов;
+- Frontend и backend поставляются как отдельные Docker-образы;
+- Docker Compose используется для локальной разработки и интеграционных проверок;
 - Kubernetes для production;
 - S3-совместимое объектное хранилище документов;
 - секреты только через runtime environment/secret store;
