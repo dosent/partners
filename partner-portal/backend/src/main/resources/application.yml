@@ -24,3 +24,6 @@ management:
     health:
       probes:
         enabled: true
+
+springdoc:
+  paths-to-match: /api/v1/**
