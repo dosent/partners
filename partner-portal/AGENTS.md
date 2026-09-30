@@ -28,7 +28,7 @@ API DTO реализуй Java records с `@Schema`; JPA entity не переда
 
 Spring Data JPA/Hibernate разрешён и является основным механизмом для CRUD, агрегатов, связей и optimistic locking. Размещай JPA entity и repository в `infrastructure` соответствующего модуля. Для изменяемых агрегатов используй `@Version`; критические переходы состояний должны возвращать конфликт при конкурентном изменении.
 
-Используй `NamedParameterJdbcTemplate` и `QueryHelper` (`ru.alfastrah.aiwa.dbutils`) для сложных фильтров, дашбордов, отчётных проекций и массовых операций, когда JPA создаёт неясный или неэффективный запрос. Храни SQL только в `src/main/resources/sql/<module>/`, регистрируй его через enum, реализующий `SqlQuery`, и передавай параметры именованно. Не размещай SQL-строки в Java-коде.
+Используй `NamedParameterJdbcTemplate` и проектный `QueryHelper` (`com.simbirsoft.partners.shared.persistence`) для сложных фильтров, дашбордов, отчётных проекций и массовых операций, когда JPA создаёт неясный или неэффективный запрос. Храни SQL только в `src/main/resources/sql/<module>/`, регистрируй его через enum, реализующий `SqlQuery`, и передавай параметры именованно. Не размещай SQL-строки в Java-коде.
 
 Хранимые процедуры в проекте запрещены. Не добавляй `SimpleJdbcCall`, procedure/function с бизнес-логикой, каталоги процедур или вызовы хранимых процедур. Бизнес-операции выполняются в application/domain слоях и обычных параметризованных SQL-запросах.
 

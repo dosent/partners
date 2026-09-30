@@ -10,6 +10,7 @@ import com.simbirsoft.partners.partner.infrastructure.PartnerStore;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,6 +24,7 @@ class ModulePersistenceArchitectureTest {
                 .importPackages("com.simbirsoft.partners");
 
         ModulePersistenceRules.NO_CROSS_MODULE_PERSISTENCE.check(productionClasses);
+        ModulePersistenceRules.NO_STORED_PROCEDURE_CALLS.check(productionClasses);
     }
 
     @Test
@@ -50,5 +52,16 @@ class ModulePersistenceArchitectureTest {
                 UsesOwnPersistence.class, PartnerRecord.class, PartnerStore.class);
 
         assertDoesNotThrow(() -> ModulePersistenceRules.NO_CROSS_MODULE_PERSISTENCE.check(classes));
+    }
+
+    @Test
+    void rejectsSimpleJdbcCallDependency() {
+        var classes = new ClassFileImporter().importClasses(UsesSimpleJdbcCall.class);
+        assertThrows(AssertionError.class,
+                () -> ModulePersistenceRules.NO_STORED_PROCEDURE_CALLS.check(classes));
+    }
+
+    private static class UsesSimpleJdbcCall {
+        SimpleJdbcCall call;
     }
 }

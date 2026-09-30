@@ -11,6 +11,7 @@ import org.springframework.data.repository.Repository;
 import java.util.Set;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 final class ModulePersistenceRules {
     private static final String MODULE_ROOT = "com.simbirsoft.partners.";
@@ -40,6 +41,11 @@ final class ModulePersistenceRules {
                     });
                 }
             });
+
+    static final ArchRule NO_STORED_PROCEDURE_CALLS = noClasses()
+            .that().resideInAPackage("com.simbirsoft.partners..")
+            .should().dependOnClassesThat()
+            .haveFullyQualifiedName("org.springframework.jdbc.core.simple.SimpleJdbcCall");
 
     private static boolean isPersistenceType(JavaClass target) {
         return target.isAnnotatedWith(Entity.class) || target.isAssignableTo(Repository.class);
