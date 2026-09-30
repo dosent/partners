@@ -4,6 +4,10 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import org.junit.jupiter.api.Test;
@@ -27,7 +31,11 @@ class ApiDocumentationConfigTest {
 
     @Test
     void addsStandardErrorsOnlyToVersionedOperationsWithoutReplacingSpecificResponses() {
-        ApiResponse specificConflict = new ApiResponse().description("Specific conflict");
+        StringSchema existingJsonSchema = new StringSchema();
+        ApiResponse specificConflict = new ApiResponse().description("Specific conflict")
+                .content(new Content().addMediaType("application/problem+json",
+                        new MediaType().schema(new StringSchema()))
+                        .addMediaType("application/json", new MediaType().schema(existingJsonSchema)));
         Operation versioned = new Operation().responses(new ApiResponses().addApiResponse("409", specificConflict));
         Operation unversioned = new Operation().responses(new ApiResponses());
         OpenAPI api = config.partnerPortalOpenApi().paths(new Paths()
@@ -44,6 +52,13 @@ class ApiDocumentationConfigTest {
             assertNotNull(response.getHeaders().get("X-Trace-Id"));
         }
         assertSame(specificConflict, versioned.getResponses().get("409"));
+        assertEquals("Specific conflict", specificConflict.getDescription());
+        assertNotNull(specificConflict.getContent().get("application/problem+json"));
+        assertSame(existingJsonSchema,
+                specificConflict.getContent().get("application/json").getSchema().getOneOf().get(0));
+        assertEquals("#/components/schemas/ApiError",
+                ((Schema<?>) specificConflict.getContent().get("application/json").getSchema().getOneOf().get(1)).get$ref());
+        assertNotNull(specificConflict.getHeaders().get("X-Trace-Id"));
         assertFalse(unversioned.getResponses().containsKey("400"));
     }
 }

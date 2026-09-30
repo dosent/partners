@@ -3,7 +3,7 @@
 - [x] 1.1 Создать Spring Boot 3 / Java 21 / Gradle backend с модулями из `design.md` и проверить сборку `./gradlew build`.
 - [x] 1.2 Настроить ArchUnit-правила для запрета cross-module repository/entity access и проверить их отдельным architecture test.
 - [ ] 1.3 Настроить PostgreSQL, JPA, JDBC/QueryHelper и Liquibase без `SimpleJdbcCall`; проверить старт на чистой Testcontainers БД.
-- [ ] 1.4 Добавить единый error envelope, traceId и OpenAPI-конвенции; проверить MockMvc-тестами `400/401/403/404/409`.
+- [x] 1.4 Добавить единый error envelope, traceId и OpenAPI-конвенции; проверить MockMvc-тестами `400/401/403/404/409`.
 - [ ] 1.5 Подготовить Dockerfile, Docker Compose и `.env.example`; проверить запуск frontend, backend, PostgreSQL и S3-compatible storage.
 
 ## 2. Доступ и регистрация

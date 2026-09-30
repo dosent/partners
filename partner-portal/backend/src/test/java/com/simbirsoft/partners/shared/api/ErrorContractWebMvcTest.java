@@ -3,6 +3,7 @@ package com.simbirsoft.partners.shared.api;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,6 +27,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -101,6 +104,43 @@ class ErrorContractWebMvcTest {
     }
 
     @Test
+    void unsupportedMethodPreservesMethodNotAllowedStatus() throws Exception {
+        mvc.perform(put("/api/v1/error-fixture"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.status").value(405))
+                .andExpect(jsonPath("$.traceId").isNotEmpty())
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
+
+    @Test
+    void unsupportedMediaTypePreservesUnsupportedMediaTypeStatus() throws Exception {
+        mvc.perform(post("/api/v1/error-fixture").contentType(MediaType.TEXT_PLAIN).content("plain"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415))
+                .andExpect(jsonPath("$.traceId").isNotEmpty())
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
+
+    @Test
+    void methodValidationNamesInvalidRequestParameter() throws Exception {
+        mvc.perform(get("/api/v1/error-fixture/limited").param("limit", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("limit"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").isNotEmpty())
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
+    }
+
+    @Test
+    void returnValueValidationRemainsInternalServerError() throws Exception {
+        mvc.perform(get("/api/v1/error-fixture/invalid-return"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors").isEmpty())
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
+
+    @Test
     void traceIdMatchesHeaderChangesPerRequestAndLeavesNoMdcValue() throws Exception {
         MvcResult first = mvc.perform(get("/api/v1/error-fixture/conflict"))
                 .andExpect(status().isConflict()).andReturn();
@@ -158,6 +198,16 @@ class ErrorContractWebMvcTest {
 
         @GetMapping("/typed/{id}")
         void typed(@PathVariable long id) {
+        }
+
+        @GetMapping("/limited")
+        void limited(@RequestParam("limit") @Min(1) int limit) {
+        }
+
+        @GetMapping("/invalid-return")
+        @NotBlank
+        String invalidReturn() {
+            return "";
         }
     }
 

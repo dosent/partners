@@ -5,6 +5,7 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.ComposedSchema;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
@@ -54,14 +55,20 @@ public class ApiDocumentationConfig {
     }
 
     private void addResponse(ApiResponses responses, String status, String description) {
-        if (responses.containsKey(status)) {
-            return;
+        ApiResponse response = responses.computeIfAbsent(status, ignored -> new ApiResponse().description(description));
+        if (response.getContent() == null) {
+            response.setContent(new Content());
         }
-        ApiResponse response = new ApiResponse().description(description)
-                .content(new Content().addMediaType("application/json",
-                        new MediaType().schema(new Schema<>().$ref("#/components/schemas/ApiError"))))
-                .addHeaderObject(TraceIdFilter.HEADER,
-                        new Header().description("Идентификатор запроса").schema(new StringSchema()));
-        responses.addApiResponse(status, response);
+        MediaType json = response.getContent().computeIfAbsent("application/json", ignored -> new MediaType());
+        Schema<?> errorSchema = new Schema<>().$ref("#/components/schemas/ApiError");
+        if (json.getSchema() == null) {
+            json.setSchema(errorSchema);
+        } else if (!"#/components/schemas/ApiError".equals(json.getSchema().get$ref())) {
+            json.setSchema(new ComposedSchema().addOneOfItem(json.getSchema()).addOneOfItem(errorSchema));
+        }
+        if (response.getHeaders() == null || !response.getHeaders().containsKey(TraceIdFilter.HEADER)) {
+            response.addHeaderObject(TraceIdFilter.HEADER,
+                    new Header().description("Идентификатор запроса").schema(new StringSchema()));
+        }
     }
 }
