@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+node_modules
+**/node_modules
+**/.gradle
+**/build
+**/dist
+.idea
+.DS_Store
+.npmrc

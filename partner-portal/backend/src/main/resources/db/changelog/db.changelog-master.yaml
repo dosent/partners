@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - changeSet:
+      id: 000-initial-schema
+      author: partner-portal
+      changes: []

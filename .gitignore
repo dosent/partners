@@ -24,3 +24,7 @@ output/
 **/__pycache__/
 **/.pytest_cache/
 **/.venv/
+
+# Артефакты Gradle и JVM-сборки
+**/.gradle/
+**/build/
