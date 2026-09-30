@@ -1,9 +1,11 @@
 schema: spec-driven
 
 context: |
-  Language: Russian
-  All artifacts must be written in Russian.
-  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Язык документации проекта: русский. Пиши на русском proposal, design, specs, tasks и другие
+  документы, если пользователь явно не запросил другой язык. В OpenSpec сохраняй без перевода
+  обязательные структурные заголовки и ключевые слова, распознаваемые инструментами:
+  Purpose, ADDED/MODIFIED/REMOVED Requirements, Requirement, Scenario, WHEN, THEN, SHALL, MUST.
+  Текст требований, сценариев, решений и пояснений пиши на русском.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.

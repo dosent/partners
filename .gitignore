@@ -1,0 +1,26 @@
+# >>> Comet managed project state >>>
+!/.comet/
+/.comet/*
+!/.comet/config.yaml
+# <<< Comet managed project state <<<
+
+# Локальные переменные окружения могут содержать секреты.
+.env
+.env.*
+!.env.example
+
+# Локальные артефакты разработки
+.DS_Store
+Thumbs.db
+.idea/
+.presentation-build/
+output/
+*.log
+
+# Зависимости, виртуальные окружения и результаты сборки
+**/node_modules/
+**/dist/
+**/coverage/
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
