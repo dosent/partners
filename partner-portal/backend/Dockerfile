@@ -1,6 +1,9 @@
 FROM gradle:8.14.4-jdk21-alpine AS builder
+USER root
+RUN mkdir -p /workspace && chown gradle:gradle /workspace
 WORKDIR /workspace
-COPY . .
+COPY --chown=gradle:gradle . .
+USER gradle
 RUN ./gradlew --no-daemon bootJar
 
 FROM eclipse-temurin:21-jre-alpine
