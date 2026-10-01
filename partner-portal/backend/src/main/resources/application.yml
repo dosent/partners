@@ -36,6 +36,9 @@ springdoc:
   paths-to-match: /api/v1/**
 
 partners:
+  registration:
+    encryption-key: ${REGISTRATION_ENCRYPTION_KEY:}
+    hash-key: ${REGISTRATION_HASH_KEY:}
   auth:
     ldap:
       enabled: ${LDAP_ENABLED:false}
