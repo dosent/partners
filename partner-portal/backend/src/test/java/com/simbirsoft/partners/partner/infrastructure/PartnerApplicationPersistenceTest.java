@@ -79,8 +79,9 @@ class PartnerApplicationPersistenceTest {
 
     @Test
     void optimisticLockRejectsStaleStatusUpdate() {
-        PartnerApplicationRecord original = PartnerApplicationRecord.from(submittedApplication(),
-                new RegistrationDataProtector(new ObjectMapper(), encryptionKey(), hashKey()));
+        RegistrationDataProtector protector = new RegistrationDataProtector(
+                new ObjectMapper(), encryptionKey(), hashKey());
+        PartnerApplicationRecord original = PartnerApplicationRecord.from(submittedApplication(), protector);
         store.saveAndFlush(original);
         entityManager.detach(original);
         PartnerApplicationRecord firstCopy = store.findById(original.getId()).orElseThrow();
@@ -90,9 +91,13 @@ class PartnerApplicationPersistenceTest {
         staleCopy.getStatusHistory().size();
         entityManager.detach(staleCopy);
 
-        firstCopy.changeStatus(2, PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", NOW.plusSeconds(5));
+        firstCopy.updateFrom(firstCopy.toDomain(protector)
+                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", NOW.plusSeconds(5)),
+                protector);
         store.saveAndFlush(firstCopy);
-        staleCopy.changeStatus(2, PartnerApplicationStatus.CHANGES_REQUESTED, "staff-2", "Уточнить данные", NOW.plusSeconds(6));
+        staleCopy.updateFrom(staleCopy.toDomain(protector)
+                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-2", "Уточнить данные", NOW.plusSeconds(6)),
+                protector);
 
         assertThatExceptionOfType(ObjectOptimisticLockingFailureException.class)
                 .isThrownBy(() -> store.saveAndFlush(staleCopy));
@@ -108,6 +113,31 @@ class PartnerApplicationPersistenceTest {
         assertThatExceptionOfType(DataIntegrityViolationException.class)
                 .isThrownBy(() -> store.saveAndFlush(PartnerApplicationRecord.from(duplicate,
                         new RegistrationDataProtector(new ObjectMapper(), encryptionKey(), hashKey()))));
+    }
+
+    @Test
+    void resubmissionAppendsNewRevisionAndStatusEventsWithoutReinsertingHistory() {
+        RegistrationDataProtector protector = new RegistrationDataProtector(
+                new ObjectMapper(), encryptionKey(), hashKey());
+        PartnerApplication firstSubmission = submittedApplication();
+        store.saveAndFlush(PartnerApplicationRecord.from(firstSubmission, protector));
+        entityManager.clear();
+
+        PartnerApplicationRecord record = store.findById(firstSubmission.id()).orElseThrow();
+        PartnerApplication resubmitted = record.toDomain(protector)
+                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", NOW.plusSeconds(1))
+                .changeStatus(PartnerApplicationStatus.REJECTED, "staff-1", "Исправить реквизиты", NOW.plusSeconds(2))
+                .resubmit(registrationData(), consent(), NOW.plusSeconds(3));
+        record.updateFrom(resubmitted, protector);
+
+        store.saveAndFlush(record);
+        entityManager.clear();
+
+        PartnerApplicationRecord restored = store.findById(firstSubmission.id()).orElseThrow();
+        assertThat(restored.getRevisions()).extracting(PartnerApplicationRevisionRecord::getRevisionNumber)
+                .containsExactly(1, 2);
+        assertThat(restored.getStatusHistory()).hasSize(4);
+        assertThat(restored.toDomain(protector).status()).isEqualTo(PartnerApplicationStatus.PENDING_REVIEW);
     }
 
     private static PartnerApplication submittedApplication() {

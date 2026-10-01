@@ -64,9 +64,35 @@ public class PartnerApplicationRecord {
             PartnerApplication application, RegistrationDataProtector protector) {
         var record = new PartnerApplicationRecord(application.id(), application.identityProvider(),
                 application.externalSubject(), application.status());
-        application.revisions().forEach(revision -> {
+        record.appendRevisions(application.revisions(), 0, protector);
+        record.appendStatusEvents(application.statusHistory(), 0);
+        return record;
+    }
+
+    public void updateFrom(PartnerApplication application, RegistrationDataProtector protector) {
+        if (!id.equals(application.id()) || !identityProvider.equals(application.identityProvider())
+                || !externalSubject.equals(application.externalSubject())) {
+            throw new IllegalArgumentException("Cannot update a different application");
+        }
+        if (revisions.size() > application.revisions().size()
+                || statusHistory.size() > application.statusHistory().size()) {
+            throw new IllegalArgumentException("Application history cannot be removed");
+        }
+        var persisted = toDomain(protector);
+        if (!persisted.revisions().equals(application.revisions().subList(0, revisions.size()))
+                || !persisted.statusHistory().equals(application.statusHistory().subList(0, statusHistory.size()))) {
+            throw new IllegalArgumentException("Existing application history cannot be changed");
+        }
+        appendRevisions(application.revisions(), revisions.size(), protector);
+        appendStatusEvents(application.statusHistory(), statusHistory.size());
+        status = application.status();
+    }
+
+    private void appendRevisions(List<PartnerApplicationRevision> source, int fromIndex,
+                                 RegistrationDataProtector protector) {
+        source.subList(fromIndex, source.size()).forEach(revision -> {
             var protectedData = protector.protect(revision.registrationData());
-            var revisionRecord = new PartnerApplicationRevisionRecord(record, revision.revisionNumber(),
+            var revisionRecord = new PartnerApplicationRevisionRecord(this, revision.revisionNumber(),
                     protectedData.encryptedPayload(), protectedData.taxIdentifierHash(), revision.submittedAt());
             revisionRecord.addConsent(new PartnerApplicationConsentRecord(revisionRecord, ConsentType.OFFER,
                     revision.consent().locale(), revision.consent().offerVersion(),
@@ -74,27 +100,22 @@ public class PartnerApplicationRecord {
             revisionRecord.addConsent(new PartnerApplicationConsentRecord(revisionRecord,
                     ConsentType.PERSONAL_DATA_PROCESSING, revision.consent().locale(),
                     revision.consent().privacyNoticeVersion(), revision.consent().privacyAcceptedAt()));
-            record.revisions.add(revisionRecord);
+            revisions.add(revisionRecord);
         });
-        for (int index = 0; index < application.statusHistory().size(); index++) {
-            var event = application.statusHistory().get(index);
-            record.statusHistory.add(new PartnerApplicationStatusRecord(record, index + 1,
+    }
+
+    private void appendStatusEvents(List<PartnerApplicationStatusEvent> source, int fromIndex) {
+        for (int index = fromIndex; index < source.size(); index++) {
+            var event = source.get(index);
+            statusHistory.add(new PartnerApplicationStatusRecord(this, index + 1,
                     event.status(), event.changedBy(), event.reason(), event.changedAt()));
         }
-        return record;
     }
 
     public PartnerApplication toDomain(RegistrationDataProtector protector) {
         return PartnerApplication.restore(id, identityProvider, externalSubject, status,
                 revisions.stream().map(revision -> revision.toDomain(protector)).toList(),
                 statusHistory.stream().map(PartnerApplicationStatusRecord::toDomain).toList());
-    }
-
-    public void changeStatus(int eventNumber, PartnerApplicationStatus nextStatus, String changedBy,
-                             String reason, java.time.Instant changedAt) {
-        status = nextStatus;
-        statusHistory.add(new PartnerApplicationStatusRecord(this, eventNumber,
-                nextStatus, changedBy, reason, changedAt));
     }
 
     public UUID getId() {

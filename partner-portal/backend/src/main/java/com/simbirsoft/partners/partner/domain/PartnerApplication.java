@@ -67,8 +67,18 @@ public final class PartnerApplication {
 
     public PartnerApplication changeStatus(
             PartnerApplicationStatus nextStatus, String changedBy, String reason, Instant changedAt) {
-        if (status == PartnerApplicationStatus.APPROVED || status == PartnerApplicationStatus.REJECTED) {
-            throw new IllegalStateException("A terminal application must be resubmitted before status can change");
+        boolean allowed = switch (status) {
+            case PENDING_REVIEW -> nextStatus == PartnerApplicationStatus.MANUAL_REVIEW
+                    || nextStatus == PartnerApplicationStatus.CHANGES_REQUESTED
+                    || nextStatus == PartnerApplicationStatus.REJECTED
+                    || nextStatus == PartnerApplicationStatus.APPROVED;
+            case MANUAL_REVIEW -> nextStatus == PartnerApplicationStatus.CHANGES_REQUESTED
+                    || nextStatus == PartnerApplicationStatus.REJECTED
+                    || nextStatus == PartnerApplicationStatus.APPROVED;
+            case CHANGES_REQUESTED, REJECTED, APPROVED -> false;
+        };
+        if (!allowed) {
+            throw new IllegalStateException("Status transition is not allowed: " + status + " -> " + nextStatus);
         }
         var event = new PartnerApplicationStatusEvent(nextStatus, changedBy, reason, changedAt);
         var history = new ArrayList<>(statusHistory);
