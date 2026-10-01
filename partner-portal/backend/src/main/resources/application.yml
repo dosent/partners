@@ -37,6 +37,19 @@ springdoc:
 
 partners:
   auth:
+    ldap:
+      enabled: ${LDAP_ENABLED:false}
+      url: ${LDAP_URL:}
+      user-dn-pattern: ${LDAP_USER_DN_PATTERN:uid={0},ou=people,dc=example,dc=com}
+      group-search-base: ${LDAP_GROUP_SEARCH_BASE:}
+      group-search-filter: "${LDAP_GROUP_SEARCH_FILTER:(&(objectClass=groupOfNames)(member={0}))}"
+      connect-timeout: ${LDAP_CONNECT_TIMEOUT:PT3S}
+      read-timeout: ${LDAP_READ_TIMEOUT:PT3S}
+      role-groups:
+        PARTNER_MANAGER: ${LDAP_GROUP_PARTNER_MANAGER:}
+        RESOURCE_MANAGER: ${LDAP_GROUP_RESOURCE_MANAGER:}
+        FINANCE_CONTROLLER: ${LDAP_GROUP_FINANCE_CONTROLLER:}
+        SYSTEM_ADMIN: ${LDAP_GROUP_SYSTEM_ADMIN:}
     yandex:
       enabled: ${YANDEX_ID_ENABLED:false}
       client-id: ${YANDEX_CLIENT_ID:}

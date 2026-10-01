@@ -17,8 +17,13 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
-@EnableConfigurationProperties(YandexOAuthProperties.class)
+@EnableConfigurationProperties({YandexOAuthProperties.class, LdapProperties.class})
 public class SecurityConfiguration {
+    @Bean
+    com.simbirsoft.partners.access.application.LdapGroupRoleMapper ldapGroupRoleMapper(LdapProperties properties) {
+        return new com.simbirsoft.partners.access.application.LdapGroupRoleMapper(properties.roleGroups());
+    }
+
     @Bean
     SecurityContextRepository securityContextRepository() {
         return new HttpSessionSecurityContextRepository();
@@ -31,9 +36,13 @@ public class SecurityConfiguration {
                 .securityContext(context -> context.securityContextRepository(contextRepository))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/auth/yandex/start", "/api/v1/auth/yandex/callback",
+                                "/api/v1/auth/staff/login", "/api/v1/auth/csrf",
                                 "/api/v1/public/**", "/v3/api-docs/**", "/swagger-ui/**",
                                 "/actuator/health/**", "/actuator/info")
                         .permitAll()
+                        .requestMatchers("/api/v1/auth/yandex/session").hasRole("PARTNER")
+                        .requestMatchers("/api/v1/auth/staff/session").hasAnyRole("PARTNER_MANAGER",
+                                "RESOURCE_MANAGER", "FINANCE_CONTROLLER", "SYSTEM_ADMIN")
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint((request, response, failure) -> {

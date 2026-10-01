@@ -23,3 +23,9 @@
 OAuth-приложение регистрируется на стороне Yandex ID. Redirect URI в настройках приложения должен совпадать с `YANDEX_REDIRECT_URI`. Для локального Compose в `.env` задаются `YANDEX_ID_ENABLED=true`, `YANDEX_CLIENT_ID` и `YANDEX_CLIENT_SECRET`; пример callback URL находится в `.env.example`. Портал запрашивает только `login:info`, использует идентификатор пользователя и не сохраняет OAuth-токен после входа.
 
 `SESSION_COOKIE_SECURE` в Compose выключен только для локального HTTP. В production требуется HTTPS и `SESSION_COOKIE_SECURE=true`. `.env` не коммитится; клиентский bundle не получает OAuth credentials.
+
+## Вход сотрудника через LDAP
+
+LDAP-вход включается только после настройки каталога: `LDAP_ENABLED=true`, `LDAP_URL`, DN-шаблон `LDAP_USER_DN_PATTERN` с одним placeholder `{0}`, `LDAP_GROUP_SEARCH_BASE` и LDAP-фильтр `LDAP_GROUP_SEARCH_FILTER`. По умолчанию фильтр ищет группы `groupOfNames` по атрибуту `member`; для другого каталога его можно заменить. LDAP соединение использует bind проверяемой учётной записью; отдельная сервисная учётка и локальное хранение паролей не используются.
+
+Укажите полный DN группы для нужных переменных `LDAP_GROUP_PARTNER_MANAGER`, `LDAP_GROUP_RESOURCE_MANAGER`, `LDAP_GROUP_FINANCE_CONTROLLER` и `LDAP_GROUP_SYSTEM_ADMIN`. Не сопоставленная группа не даёт доступ. `/api/v1/auth/staff/login` принимает username/password только для LDAP bind, создаёт серверную HttpOnly-сессию с сопоставленными ролями и не сохраняет пароль. Перед POST клиент получает CSRF token с `GET /api/v1/auth/csrf` и передаёт cookie сессии вместе с заголовком из ответа (по умолчанию `X-XSRF-TOKEN`). Все LDAP адреса и DN должны быть заданы в локальном `.env` или secret store; не коммитьте реальные значения.
