@@ -3,3 +3,168 @@ databaseChangeLog:
       id: 000-initial-schema
       author: partner-portal
       changes: []
+  - changeSet:
+      id: 001-partner-application-model
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: partner_application
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: identity_provider
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: external_subject
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: partner_application
+            columnNames: identity_provider, external_subject
+            constraintName: uq_partner_application_identity
+        - createTable:
+            tableName: partner_application_revision
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: application_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_partner_application_revision_application
+                    references: partner_application(id)
+              - column:
+                  name: revision_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: encrypted_payload
+                  type: bytea
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tax_identifier_hash
+                  type: varchar(64)
+              - column:
+                  name: submitted_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: partner_application_revision
+            columnNames: application_id, revision_number
+            constraintName: uq_partner_application_revision_number
+        - createIndex:
+            tableName: partner_application_revision
+            indexName: idx_partner_application_tax_identifier_hash
+            columns:
+              - column:
+                  name: tax_identifier_hash
+        - createTable:
+            tableName: partner_application_consent
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: revision_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_partner_application_consent_revision
+                    references: partner_application_revision(id)
+              - column:
+                  name: consent_type
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: locale
+                  type: varchar(8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: accepted_version
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: accepted_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: partner_application_consent
+            columnNames: revision_id, consent_type
+            constraintName: uq_partner_application_consent_type
+        - createTable:
+            tableName: partner_application_status_history
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: application_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_partner_application_status_application
+                    references: partner_application(id)
+              - column:
+                  name: event_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: changed_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: varchar(1000)
+              - column:
+                  name: changed_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: partner_application_status_history
+            columnNames: application_id, event_number
+            constraintName: uq_partner_application_status_event

@@ -1,12 +1,12 @@
 package com.simbirsoft.partners.architecture;
 
-import com.simbirsoft.partners.lead.infrastructure.LeadRecord;
-import com.simbirsoft.partners.lead.infrastructure.LeadStore;
+import com.simbirsoft.architecture.fixtures.lead.LeadRecord;
+import com.simbirsoft.architecture.fixtures.lead.LeadStore;
 import com.simbirsoft.partners.partner.application.UsesLeadEntity;
 import com.simbirsoft.partners.partner.application.UsesLeadRepository;
 import com.simbirsoft.partners.partner.application.UsesOwnPersistence;
-import com.simbirsoft.partners.partner.infrastructure.PartnerRecord;
-import com.simbirsoft.partners.partner.infrastructure.PartnerStore;
+import com.simbirsoft.architecture.fixtures.partner.PartnerRecord;
+import com.simbirsoft.architecture.fixtures.partner.PartnerStore;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;

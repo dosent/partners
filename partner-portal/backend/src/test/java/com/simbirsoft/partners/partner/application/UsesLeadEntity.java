@@ -1,6 +1,6 @@
 package com.simbirsoft.partners.partner.application;
 
-import com.simbirsoft.partners.lead.infrastructure.LeadRecord;
+import com.simbirsoft.architecture.fixtures.lead.LeadRecord;
 
 public class UsesLeadEntity {
     private LeadRecord record;

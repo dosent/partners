@@ -1,4 +1,4 @@
-package com.simbirsoft.partners.lead.infrastructure;
+package com.simbirsoft.architecture.fixtures.lead;
 
 import org.springframework.data.repository.Repository;
 

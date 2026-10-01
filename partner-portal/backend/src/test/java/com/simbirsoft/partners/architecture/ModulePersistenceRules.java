@@ -15,6 +15,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 final class ModulePersistenceRules {
     private static final String MODULE_ROOT = "com.simbirsoft.partners.";
+    private static final String FIXTURE_ROOT = "com.simbirsoft.architecture.fixtures.";
     private static final Set<String> MODULES = Set.of(
             "access", "partner", "lead", "staffing", "candidate", "finance",
             "document", "notification", "localization", "audit", "integration");
@@ -53,6 +54,12 @@ final class ModulePersistenceRules {
 
     private static String moduleOf(JavaClass type) {
         String packageName = type.getPackageName();
+        if (packageName.startsWith(FIXTURE_ROOT)) {
+            String relative = packageName.substring(FIXTURE_ROOT.length());
+            int separator = relative.indexOf('.');
+            String fixtureModule = separator < 0 ? relative : relative.substring(0, separator);
+            return MODULES.contains(fixtureModule) ? fixtureModule : null;
+        }
         if (!packageName.startsWith(MODULE_ROOT)) {
             return null;
         }

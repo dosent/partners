@@ -1,10 +1,10 @@
-package com.simbirsoft.partners.lead.infrastructure;
+package com.simbirsoft.architecture.fixtures.partner;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
 @Entity
-public class LeadRecord {
+public class PartnerRecord {
     @Id
     private Long id;
 }

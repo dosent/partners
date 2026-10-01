@@ -1,4 +1,4 @@
-package com.simbirsoft.partners.partner.infrastructure;
+package com.simbirsoft.architecture.fixtures.partner;
 
 import org.springframework.data.repository.Repository;
 
