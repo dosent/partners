@@ -41,6 +41,17 @@ class ModulePersistenceArchitectureTest {
     }
 
     @Test
+    void accessApiDoesNotDependOnInfrastructureAdapters() {
+        var productionClasses = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("com.simbirsoft.partners.access.api");
+
+        noClasses().that().resideInAPackage("..access.api..")
+                .should().dependOnClassesThat().resideInAnyPackage("..access.infrastructure..")
+                .check(productionClasses);
+    }
+
+    @Test
     void rejectsEntityFromAnotherModule() {
         var classes = new ClassFileImporter().importClasses(UsesLeadEntity.class, LeadRecord.class);
 

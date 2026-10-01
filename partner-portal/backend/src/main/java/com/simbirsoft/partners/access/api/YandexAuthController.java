@@ -1,13 +1,6 @@
 package com.simbirsoft.partners.access.api;
 
-import com.simbirsoft.partners.access.application.YandexOAuthService;
-import com.simbirsoft.partners.access.application.OAuthStateStore;
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
-import com.simbirsoft.partners.access.application.ExternalIdentity;
-import com.simbirsoft.partners.access.application.IdentityProviderFailureException;
-import com.simbirsoft.partners.access.application.YandexOAuthNotConfiguredException;
-import com.simbirsoft.partners.access.infrastructure.HttpSessionOAuthStateSession;
-import com.simbirsoft.partners.access.infrastructure.PartnerSessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -22,21 +15,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/auth/yandex")
 @Tag(name = "Аутентификация партнёра", description = "Вход партнёров через Yandex ID")
 public class YandexAuthController {
-    private final YandexOAuthService oauthService;
-    private final OAuthStateStore stateStore;
-    private final PartnerSessionService partnerSessionService;
+    private final YandexAuthFlow authFlow;
 
-    public YandexAuthController(YandexOAuthService oauthService, OAuthStateStore stateStore,
-            PartnerSessionService partnerSessionService) {
-        this.oauthService = oauthService;
-        this.stateStore = stateStore;
-        this.partnerSessionService = partnerSessionService;
+    public YandexAuthController(YandexAuthFlow authFlow) {
+        this.authFlow = authFlow;
     }
 
     @GetMapping("/start")
@@ -46,14 +33,7 @@ public class YandexAuthController {
             @ApiResponse(responseCode = "503", description = "OAuth-приложение не настроено")
     })
     public ResponseEntity<Void> start(HttpServletRequest request) {
-        String state = stateStore.issue(new HttpSessionOAuthStateSession(request.getSession(true)));
-        URI location;
-        try {
-            location = oauthService.authorizationUri(state);
-        } catch (YandexOAuthNotConfiguredException exception) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Yandex ID authentication is not configured");
-        }
+        URI location = authFlow.start(request);
         return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
     }
 
@@ -70,21 +50,7 @@ public class YandexAuthController {
             @RequestParam(required = false) String error,
             HttpServletRequest request,
             HttpServletResponse response) {
-        var session = request.getSession(false);
-        if (session == null || !stateStore.consume(new HttpSessionOAuthStateSession(session), state)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid OAuth state");
-        }
-        if (error != null || code == null || code.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Yandex ID authorization was not completed");
-        }
-        ExternalIdentity identity;
-        try {
-            identity = oauthService.authenticate(code);
-        } catch (IdentityProviderFailureException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Yandex ID authentication failed");
-        }
-        partnerSessionService.authenticate(identity, request, response);
+        authFlow.callback(code, state, error, request, response);
         return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/")).build();
     }
 
