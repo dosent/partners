@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration",
         "partners.auth.ldap.enabled=true",
-        "partners.auth.ldap.url=ldap://directory.example:389",
+        "partners.auth.ldap.url=ldaps://directory.example:636",
         "partners.auth.ldap.user-dn-pattern=uid={0},ou=people,dc=example,dc=com",
         "partners.auth.ldap.group-search-base=ou=groups,dc=example,dc=com",
         "partners.auth.ldap.group-search-filter=(&(objectClass=groupOfNames)(member={0}))",
@@ -83,6 +83,29 @@ class StaffLdapLoginFlowTest {
                 .andExpect(jsonPath("$.username").value("anna"));
         mockMvc.perform(get("/api/v1/auth/yandex/session").session(authenticatedSession))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void staffLoginCreatesAndRotatesSessionWhenBrowserHasNoneYet() throws Exception {
+        given(authenticator.authenticate(eq("anna"), eq("directory-secret")))
+                .willReturn(new StaffIdentity("anna", Set.of(StaffRole.PARTNER_MANAGER)));
+
+        MvcResult csrf = mockMvc.perform(get("/api/v1/auth/csrf")).andExpect(status().isOk()).andReturn();
+        assertNull(csrf.getRequest().getSession(false));
+
+        MvcResult login = mockMvc.perform(post("/api/v1/auth/staff/login").with(csrf())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "username", "anna", "password", "directory-secret"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("anna"))
+                .andReturn();
+
+        MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
+        org.junit.jupiter.api.Assertions.assertNotNull(session);
+        SecurityContext context = (SecurityContext) session.getAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        assertNull(context.getAuthentication().getCredentials());
     }
 
     @Test

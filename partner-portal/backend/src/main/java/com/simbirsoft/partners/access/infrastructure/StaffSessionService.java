@@ -17,6 +17,7 @@ public final class StaffSessionService {
     }
 
     public void authenticate(StaffIdentity identity, HttpServletRequest request, HttpServletResponse response) {
+        request.getSession(true);
         request.changeSessionId();
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(new StaffAuthenticationToken(identity));

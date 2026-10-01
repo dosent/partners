@@ -88,8 +88,33 @@ class JndiLdapStaffAuthenticatorTest {
         verifyNoInteractions(connections);
     }
 
-    private JndiLdapStaffAuthenticator authenticator(LdapConnectionFactory connections) {
+    @Test
+    void plaintextLdapUrlCannotAuthenticateStaffPasswords() {
+        LdapConnectionFactory connections = mock(LdapConnectionFactory.class);
         var properties = new LdapProperties(true, "ldap://directory.example:389",
+                "uid={0},ou=people,dc=example,dc=com", "ou=groups,dc=example,dc=com",
+                "(&(objectClass=groupOfNames)(member={0}))", Duration.ofSeconds(2), Duration.ofSeconds(3),
+                Map.of("PARTNER_MANAGER", "CN=Partner Managers,OU=Groups,DC=example,DC=com"));
+        var authenticator = new JndiLdapStaffAuthenticator(properties,
+                new LdapGroupRoleMapper(properties.roleGroups()), connections);
+
+        assertThrows(StaffDirectoryUnavailableException.class,
+                () -> authenticator.authenticate("anna", "directory-secret"));
+        verifyNoInteractions(connections);
+    }
+
+    @Test
+    void ldapProviderUrlCannotMixEncryptedAndUnencryptedEndpoints() {
+        var properties = new LdapProperties(true, "ldaps://directory.example:636 ldap://fallback.example:389",
+                "uid={0},ou=people,dc=example,dc=com", "ou=groups,dc=example,dc=com",
+                "(&(objectClass=groupOfNames)(member={0}))", Duration.ofSeconds(2), Duration.ofSeconds(3),
+                Map.of("PARTNER_MANAGER", "CN=Partner Managers,OU=Groups,DC=example,DC=com"));
+
+        org.junit.jupiter.api.Assertions.assertFalse(properties.configured());
+    }
+
+    private JndiLdapStaffAuthenticator authenticator(LdapConnectionFactory connections) {
+        var properties = new LdapProperties(true, "ldaps://directory.example:636",
                 "uid={0},ou=people,dc=example,dc=com", "ou=groups,dc=example,dc=com",
                 "(&(objectClass=groupOfNames)(member={0}))", Duration.ofSeconds(2), Duration.ofSeconds(3),
                 Map.of("PARTNER_MANAGER", "CN=Partner Managers,OU=Groups,DC=example,DC=com"));

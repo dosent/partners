@@ -15,6 +15,7 @@
 - Роли: `PARTNER_MANAGER`, `RESOURCE_MANAGER`, `FINANCE_CONTROLLER`, `SYSTEM_ADMIN`.
 - Сотрудники аутентифицируются через LDAP; пароли не сохраняются и не остаются в security context.
 - LDAP URL, DN-шаблон, group-search параметры и group-to-role mapping поступают из runtime environment.
+- Разрешён только TLS URL `ldaps://`; сертификат должен доверяться JVM truststore.
 - При отсутствии разрешённой роли вход запрещён; событие отказа не содержит пароль.
 - Слой `access.application` не зависит от API/infrastructure; `access.api` не зависит от infrastructure.
 - Документация проекта и комментарии для сопровождения пишутся по-русски.
@@ -60,5 +61,5 @@
 2. [x] Подтвердить RED.
 3. [x] Добавить staff login flow adapter, ротацию session ID, endpoint, role authorities и CSRF bootstrap route.
 4. [x] Запустить OAuth regression, staff contract и ArchUnit тесты.
-5. [x] Проверить `git diff --check`, `openspec validate --strict`, Compose config и production build; полный suite остановлен из-за недоступного Docker socket.
+5. [x] Проверить `git diff --check`, `openspec validate --strict`, Compose config и production build; regressions подтверждают LDAPS-only и login без предварительной сессии. Полный suite остановлен из-за недоступного Docker socket.
 6. [ ] Закоммитить задачу и отправить ветку; после независимого ревью fast-forward-слить её в `main` согласно пользовательскому поручению.
