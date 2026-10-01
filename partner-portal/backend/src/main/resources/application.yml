@@ -14,6 +14,13 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      cookie:
+        name: PARTNER_SESSION
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
 
 management:
   endpoints:
@@ -27,3 +34,16 @@ management:
 
 springdoc:
   paths-to-match: /api/v1/**
+
+partners:
+  auth:
+    yandex:
+      enabled: ${YANDEX_ID_ENABLED:false}
+      client-id: ${YANDEX_CLIENT_ID:}
+      client-secret: ${YANDEX_CLIENT_SECRET:}
+      redirect-uri: ${YANDEX_REDIRECT_URI:http://localhost:8080/api/v1/auth/yandex/callback}
+      authorization-uri: https://oauth.yandex.ru/authorize
+      token-uri: https://oauth.yandex.ru/token
+      user-info-uri: https://login.yandex.ru/info?format=json
+      state-ttl: ${YANDEX_STATE_TTL:PT5M}
+      http-timeout: ${YANDEX_HTTP_TIMEOUT:PT5S}

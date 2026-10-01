@@ -17,3 +17,9 @@
 Для сложных чтений и массовых операций используется проектный `QueryHelper` из `shared.persistence`. Каждый модуль регистрирует свои SQL-файлы enum, реализующим `SqlQuery`; файлы лежат в `src/main/resources/sql/<module>/`. Параметры передаются через `SqlParameterSource`. SQL и параметры, полученные от пользователя, не используются как путь к ресурсу.
 
 Интеграционный тест `PostgreSqlStartupTest` запускает чистый PostgreSQL 16 через Testcontainers, проверяет применение Liquibase и выполнение зарегистрированного SQL-запроса с именованным параметром. Для этого теста требуется доступный Docker daemon.
+
+## Вход партнёра через Yandex ID
+
+OAuth-приложение регистрируется на стороне Yandex ID. Redirect URI в настройках приложения должен совпадать с `YANDEX_REDIRECT_URI`. Для локального Compose в `.env` задаются `YANDEX_ID_ENABLED=true`, `YANDEX_CLIENT_ID` и `YANDEX_CLIENT_SECRET`; пример callback URL находится в `.env.example`. Портал запрашивает только `login:info`, использует идентификатор пользователя и не сохраняет OAuth-токен после входа.
+
+`SESSION_COOKIE_SECURE` в Compose выключен только для локального HTTP. В production требуется HTTPS и `SESSION_COOKIE_SECURE=true`. `.env` не коммитится; клиентский bundle не получает OAuth credentials.

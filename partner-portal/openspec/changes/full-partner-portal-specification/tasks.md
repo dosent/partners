@@ -8,7 +8,7 @@
 
 ## 2. Доступ и регистрация
 
-- [ ] 2.1 Реализовать Yandex ID adapter, OAuth state и защищённую партнёрскую сессию; проверить успешный и ошибочный callback contract/integration тестами.
+- [x] 2.1 Реализовать Yandex ID adapter, OAuth state и защищённую партнёрскую сессию; проверить успешный и ошибочный callback contract/integration тестами.
 - [ ] 2.2 Реализовать LDAP-аутентификацию и group-to-role mapping внутренних пользователей; проверить разрешённые и запрещённые группы.
 - [ ] 2.3 Реализовать модели заявки, редакций, согласий и статусов через JPA/Liquibase; проверить optimistic locking и историю редакций.
 - [ ] 2.4 Реализовать adapters проверки реквизитов с fallback на ручную проверку; проверить success/mismatch/timeout через WireMock.
