@@ -68,7 +68,7 @@
 - Java 21, Spring Boot 3;
 - Spring MVC, Spring Validation, Spring Security;
 - Spring Data JPA / Hibernate для CRUD, агрегатов, optimistic locking и связей внутри модуля;
-- `NamedParameterJdbcTemplate + QueryHelper` (`ru.alfastrah.aiwa.dbutils`) для сложных фильтров, аналитики, отчётных проекций и массовых операций;
+- `NamedParameterJdbcTemplate` и проектный `QueryHelper` (`com.simbirsoft.partners.shared.persistence`) для сложных фильтров, аналитики, отчётных проекций и массовых операций;
 - PostgreSQL 15+;
 - Liquibase для всех изменений схемы;
 - Lombok: `@RequiredArgsConstructor`, `@Builder`, `@FieldNameConstants`, `@Slf4j` и другие уместные аннотации;
