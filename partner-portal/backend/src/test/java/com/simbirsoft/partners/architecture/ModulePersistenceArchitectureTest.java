@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 class ModulePersistenceArchitectureTest {
     @Test
@@ -25,6 +26,18 @@ class ModulePersistenceArchitectureTest {
 
         ModulePersistenceRules.NO_CROSS_MODULE_PERSISTENCE.check(productionClasses);
         ModulePersistenceRules.NO_STORED_PROCEDURE_CALLS.check(productionClasses);
+    }
+
+    @Test
+    void accessApplicationDoesNotDependOnApiOrInfrastructureAdapters() {
+        var productionClasses = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("com.simbirsoft.partners.access.application");
+
+        noClasses().that().resideInAPackage("..access.application..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "..access.api..", "..access.infrastructure..")
+                .check(productionClasses);
     }
 
     @Test

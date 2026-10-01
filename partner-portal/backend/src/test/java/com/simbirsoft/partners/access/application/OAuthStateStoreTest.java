@@ -10,14 +10,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpSession;
+import java.util.HashMap;
+import java.util.Map;
 
 class OAuthStateStoreTest {
     @Test
     void issuedStateIsSingleUseAndUnpredictable() {
         OAuthStateStore store = store(Instant.parse("2026-10-01T10:00:00Z"));
-        MockHttpSession firstSession = new MockHttpSession();
-        MockHttpSession secondSession = new MockHttpSession();
+        TestSession firstSession = new TestSession();
+        TestSession secondSession = new TestSession();
 
         String first = store.issue(firstSession);
         String second = store.issue(secondSession);
@@ -30,7 +31,7 @@ class OAuthStateStoreTest {
     @Test
     void mismatchedStateIsRejectedAndConsumed() {
         OAuthStateStore store = store(Instant.parse("2026-10-01T10:00:00Z"));
-        MockHttpSession session = new MockHttpSession();
+        TestSession session = new TestSession();
         String expected = store.issue(session);
 
         assertFalse(store.consume(session, "attacker-value"));
@@ -42,7 +43,7 @@ class OAuthStateStoreTest {
         Instant issuedAt = Instant.parse("2026-10-01T10:00:00Z");
         OAuthStateStore issuer = store(issuedAt);
         OAuthStateStore expiredConsumer = store(issuedAt.plus(Duration.ofMinutes(5)));
-        MockHttpSession session = new MockHttpSession();
+        TestSession session = new TestSession();
         String state = issuer.issue(session);
 
         assertFalse(expiredConsumer.consume(session, state));
@@ -50,5 +51,12 @@ class OAuthStateStoreTest {
 
     private OAuthStateStore store(Instant instant) {
         return new OAuthStateStore(new SecureRandom(), Clock.fixed(instant, ZoneOffset.UTC), Duration.ofMinutes(5));
+    }
+
+    private static final class TestSession implements OAuthStateSession {
+        private final Map<String, Object> attributes = new HashMap<>();
+        @Override public Object getAttribute(String name) { return attributes.get(name); }
+        @Override public void setAttribute(String name, Object value) { attributes.put(name, value); }
+        @Override public void removeAttribute(String name) { attributes.remove(name); }
     }
 }

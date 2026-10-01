@@ -1,6 +1,5 @@
 package com.simbirsoft.partners.access.application;
 
-import jakarta.servlet.http.HttpSession;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -18,7 +17,7 @@ public final class OAuthStateStore {
     private final Duration lifetime;
 
     @Autowired
-    public OAuthStateStore(com.simbirsoft.partners.access.infrastructure.YandexOAuthProperties properties) {
+    public OAuthStateStore(YandexOAuthSettings properties) {
         this(new SecureRandom(), Clock.systemUTC(), properties.stateTtl());
     }
 
@@ -28,7 +27,7 @@ public final class OAuthStateStore {
         this.lifetime = lifetime;
     }
 
-    public String issue(HttpSession session) {
+    public String issue(OAuthStateSession session) {
         byte[] bytes = new byte[32];
         secureRandom.nextBytes(bytes);
         String state = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -36,7 +35,7 @@ public final class OAuthStateStore {
         return state;
     }
 
-    public boolean consume(HttpSession session, String returnedState) {
+    public boolean consume(OAuthStateSession session, String returnedState) {
         if (session == null) {
             return false;
         }

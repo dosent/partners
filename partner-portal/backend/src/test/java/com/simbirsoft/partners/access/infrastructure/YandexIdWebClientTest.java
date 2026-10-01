@@ -2,6 +2,7 @@ package com.simbirsoft.partners.access.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import com.simbirsoft.partners.access.application.IdentityProviderFailureException;
 
 import com.simbirsoft.partners.access.application.ExternalIdentity;
 import java.time.Duration;
@@ -50,7 +51,7 @@ class YandexIdWebClientTest {
                         .build()));
         YandexIdWebClient client = new YandexIdWebClient(builder, properties());
 
-        assertThrows(YandexIdentityProviderException.class, () -> client.exchangeAuthorizationCode("bad-code"));
+        assertThrows(IdentityProviderFailureException.class, () -> client.exchangeAuthorizationCode("bad-code"));
     }
 
     private YandexOAuthProperties properties() {

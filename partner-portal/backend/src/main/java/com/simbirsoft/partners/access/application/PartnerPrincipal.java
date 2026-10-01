@@ -1,11 +1,9 @@
-package com.simbirsoft.partners.access.api;
+package com.simbirsoft.partners.access.application;
 
 import java.io.Serializable;
 import java.security.Principal;
 
 public record PartnerPrincipal(String provider, String subject) implements Principal, Serializable {
     @Override
-    public String getName() {
-        return provider + ":" + subject;
-    }
+    public String getName() { return provider + ":" + subject; }
 }

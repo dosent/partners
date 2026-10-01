@@ -1,5 +1,6 @@
-package com.simbirsoft.partners.access.api;
+package com.simbirsoft.partners.access.infrastructure;
 
+import com.simbirsoft.partners.access.application.PartnerPrincipal;
 import java.util.List;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -13,13 +14,6 @@ public final class PartnerAuthenticationToken extends AbstractAuthenticationToke
         super.setAuthenticated(true);
     }
 
-    @Override
-    public Object getCredentials() {
-        return null;
-    }
-
-    @Override
-    public PartnerPrincipal getPrincipal() {
-        return principal;
-    }
+    @Override public Object getCredentials() { return null; }
+    @Override public PartnerPrincipal getPrincipal() { return principal; }
 }

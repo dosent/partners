@@ -3,6 +3,7 @@ package com.simbirsoft.partners.access.infrastructure;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.simbirsoft.partners.access.application.ExternalIdentity;
+import com.simbirsoft.partners.access.application.IdentityProviderFailureException;
 import com.simbirsoft.partners.access.application.YandexIdentityProvider;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -25,17 +26,17 @@ public final class YandexIdWebClient implements YandexIdentityProvider {
         try {
             YandexToken token = exchangeCode(code);
             if (token == null || token.accessToken() == null || token.accessToken().isBlank()) {
-                throw new YandexIdentityProviderException("Yandex ID returned no access token");
+                throw new IdentityProviderFailureException("Yandex ID returned no access token");
             }
             YandexUserInfo user = fetchUser(token.accessToken());
             if (user == null || user.id() == null || user.id().isBlank()) {
-                throw new YandexIdentityProviderException("Yandex ID returned no user identifier");
+                throw new IdentityProviderFailureException("Yandex ID returned no user identifier");
             }
             return new ExternalIdentity(PROVIDER, user.id());
-        } catch (YandexIdentityProviderException exception) {
+        } catch (IdentityProviderFailureException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            throw new YandexIdentityProviderException("Yandex ID authentication failed", exception);
+            throw new IdentityProviderFailureException("Yandex ID authentication failed", exception);
         }
     }
 
