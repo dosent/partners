@@ -54,11 +54,10 @@
 
 - [x] Change `PartnerApplication.submit(...)` to create its first status event as `MANUAL_REVIEW` with actor `PARTNER`.
 - [x] Change `PartnerApplication.resubmit(...)` to append a `MANUAL_REVIEW` event for the new immutable revision.
-- [ ] Update only the existing assertions that expect a new submission or resubmission to be `PENDING_REVIEW`; preserve assertions for legacy restored `PENDING_REVIEW` aggregates and staff transitions.
-- [ ] Remove fixture transitions from initial `MANUAL_REVIEW` to `MANUAL_REVIEW`; adjust history lengths and event sequences. In the optimistic-locking scenario, use two distinct valid staff decisions from `MANUAL_REVIEW`.
+- [x] Update existing assertions and fixtures for new/resubmitted `MANUAL_REVIEW`; preserve legacy restored `PENDING_REVIEW` and staff transition behavior.
 - [x] Inspect record conversion and persistence round-trip; change them only if they contain status-specific assumptions that prevent `MANUAL_REVIEW` from being stored and restored.
 - [x] Inspect all production references to `submit` and `resubmit`; confirm none overwrites the aggregate status with `PENDING_REVIEW`.
-- [ ] Mark the corresponding implementation items in `openspec/changes/partner-requisites-verification/tasks.md` complete after the changes are reviewable.
+- [x] Mark the implemented new and resubmitted application routing item in the OpenSpec task checklist.
 
 ### Task 2: Review the resulting change
 
