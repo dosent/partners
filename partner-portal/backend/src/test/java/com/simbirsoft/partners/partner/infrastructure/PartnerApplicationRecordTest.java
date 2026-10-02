@@ -26,9 +26,8 @@ class PartnerApplicationRecordTest {
         PartnerApplicationRecord record = PartnerApplicationRecord.from(submitted, protector);
 
         PartnerApplication resubmitted = record.toDomain(protector)
-                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", NOW.plusSeconds(1))
-                .changeStatus(PartnerApplicationStatus.REJECTED, "staff-1", "Исправить реквизиты", NOW.plusSeconds(2))
-                .resubmit(registrationData(), consent(), NOW.plusSeconds(3));
+                .changeStatus(PartnerApplicationStatus.REJECTED, "staff-1", "Исправить реквизиты", NOW.plusSeconds(1))
+                .resubmit(registrationData(), consent(), NOW.plusSeconds(2));
         record.updateFrom(resubmitted, protector);
 
         PartnerApplication restored = record.toDomain(protector);
@@ -36,7 +35,6 @@ class PartnerApplicationRecordTest {
                 .containsExactly(1, 2);
         assertThat(restored.statusHistory()).extracting(event -> event.status())
                 .containsExactly(PartnerApplicationStatus.MANUAL_REVIEW,
-                        PartnerApplicationStatus.MANUAL_REVIEW,
                         PartnerApplicationStatus.REJECTED,
                         PartnerApplicationStatus.MANUAL_REVIEW);
     }

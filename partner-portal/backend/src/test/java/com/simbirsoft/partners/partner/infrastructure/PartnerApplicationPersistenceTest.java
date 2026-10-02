@@ -92,11 +92,11 @@ class PartnerApplicationPersistenceTest {
         entityManager.detach(staleCopy);
 
         firstCopy.updateFrom(firstCopy.toDomain(protector)
-                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", NOW.plusSeconds(5)),
+                .changeStatus(PartnerApplicationStatus.APPROVED, "staff-1", "", NOW.plusSeconds(5)),
                 protector);
         store.saveAndFlush(firstCopy);
         staleCopy.updateFrom(staleCopy.toDomain(protector)
-                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-2", "Уточнить данные", NOW.plusSeconds(6)),
+                .changeStatus(PartnerApplicationStatus.REJECTED, "staff-2", "Уточнить данные", NOW.plusSeconds(6)),
                 protector);
 
         assertThatExceptionOfType(ObjectOptimisticLockingFailureException.class)
@@ -125,9 +125,8 @@ class PartnerApplicationPersistenceTest {
 
         PartnerApplicationRecord record = store.findById(firstSubmission.id()).orElseThrow();
         PartnerApplication resubmitted = record.toDomain(protector)
-                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", NOW.plusSeconds(1))
-                .changeStatus(PartnerApplicationStatus.REJECTED, "staff-1", "Исправить реквизиты", NOW.plusSeconds(2))
-                .resubmit(registrationData(), consent(), NOW.plusSeconds(3));
+                .changeStatus(PartnerApplicationStatus.REJECTED, "staff-1", "Исправить реквизиты", NOW.plusSeconds(1))
+                .resubmit(registrationData(), consent(), NOW.plusSeconds(2));
         record.updateFrom(resubmitted, protector);
 
         store.saveAndFlush(record);
@@ -136,8 +135,8 @@ class PartnerApplicationPersistenceTest {
         PartnerApplicationRecord restored = store.findById(firstSubmission.id()).orElseThrow();
         assertThat(restored.getRevisions()).extracting(PartnerApplicationRevisionRecord::getRevisionNumber)
                 .containsExactly(1, 2);
-        assertThat(restored.getStatusHistory()).hasSize(4);
-        assertThat(restored.toDomain(protector).status()).isEqualTo(PartnerApplicationStatus.PENDING_REVIEW);
+        assertThat(restored.getStatusHistory()).hasSize(3);
+        assertThat(restored.toDomain(protector).status()).isEqualTo(PartnerApplicationStatus.MANUAL_REVIEW);
     }
 
     private static PartnerApplication submittedApplication() {

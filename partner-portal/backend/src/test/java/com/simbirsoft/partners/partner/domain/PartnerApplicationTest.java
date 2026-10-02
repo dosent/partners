@@ -29,7 +29,6 @@ class PartnerApplicationTest {
     void resubmissionAfterRejectionAppendsRevisionAndKeepsPreviousRevision() {
         PartnerApplication application = PartnerApplication.submit(
                 UUID.randomUUID(), "yandex", "subject-1", individual(), consent(), SUBMITTED_AT)
-                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", SUBMITTED_AT)
                 .changeStatus(PartnerApplicationStatus.REJECTED, "staff-1", "Нужны уточнения", SUBMITTED_AT);
 
         PartnerApplication resubmitted = application.resubmit(
@@ -40,7 +39,7 @@ class PartnerApplicationTest {
         assertThat(resubmitted.revisions()).extracting(PartnerApplicationRevision::revisionNumber)
                 .containsExactly(1, 2);
         assertThat(application.revisions()).hasSize(1);
-        assertThat(resubmitted.statusHistory()).hasSize(4);
+        assertThat(resubmitted.statusHistory()).hasSize(3);
     }
 
     @Test
@@ -53,7 +52,7 @@ class PartnerApplicationTest {
     }
 
     @Test
-    void managerCanResolvePendingApplicationDirectly() {
+    void managerCanResolveManualReviewApplicationDirectly() {
         PartnerApplication application = PartnerApplication.submit(
                 UUID.randomUUID(), "yandex", "subject-1", individual(), consent(), SUBMITTED_AT);
 
@@ -66,7 +65,6 @@ class PartnerApplicationTest {
     void changesRequestedApplicationMustBeResubmittedInsteadOfChangingReviewStatus() {
         PartnerApplication application = PartnerApplication.submit(
                 UUID.randomUUID(), "yandex", "subject-1", individual(), consent(), SUBMITTED_AT)
-                .changeStatus(PartnerApplicationStatus.MANUAL_REVIEW, "staff-1", "", SUBMITTED_AT.plusSeconds(1))
                 .changeStatus(PartnerApplicationStatus.CHANGES_REQUESTED, "staff-1", "Уточнить данные", SUBMITTED_AT.plusSeconds(2));
 
         assertThatIllegalStateException().isThrownBy(() -> application.changeStatus(

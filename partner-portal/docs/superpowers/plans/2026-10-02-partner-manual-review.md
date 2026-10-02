@@ -24,6 +24,7 @@
 - Modify `backend/src/main/java/com/simbirsoft/partners/partner/domain/PartnerApplication.java`: set initial and resubmission status/history to `MANUAL_REVIEW`.
 - Modify `backend/src/test/java/com/simbirsoft/partners/partner/domain/PartnerApplicationTest.java`: align existing expectations for submission and resubmission with the approved rule.
 - Modify `backend/src/test/java/com/simbirsoft/partners/partner/infrastructure/PartnerApplicationRecordTest.java`: align expected persisted status history.
+- Modify `backend/src/test/java/com/simbirsoft/partners/partner/infrastructure/PartnerApplicationPersistenceTest.java`: remove redundant manual-review transitions and preserve valid optimistic-locking coverage.
 - Inspect `backend/src/main/java/com/simbirsoft/partners/partner/infrastructure/PartnerApplicationRecord.java` and `PartnerApplicationStore.java`; keep their mapping unchanged if status/history already round-trip without special cases.
 - Update `openspec/changes/partner-requisites-verification/tasks.md` when the behavior is implemented.
 
@@ -43,6 +44,7 @@
 - Modify: `backend/src/main/java/com/simbirsoft/partners/partner/domain/PartnerApplication.java`
 - Modify: `backend/src/test/java/com/simbirsoft/partners/partner/domain/PartnerApplicationTest.java`
 - Modify: `backend/src/test/java/com/simbirsoft/partners/partner/infrastructure/PartnerApplicationRecordTest.java`
+- Modify: `backend/src/test/java/com/simbirsoft/partners/partner/infrastructure/PartnerApplicationPersistenceTest.java`
 - Inspect: `backend/src/main/java/com/simbirsoft/partners/partner/infrastructure/PartnerApplicationRecord.java`
 - Inspect: `backend/src/main/java/com/simbirsoft/partners/partner/infrastructure/PartnerApplicationStore.java`
 
@@ -52,10 +54,11 @@
 
 - [x] Change `PartnerApplication.submit(...)` to create its first status event as `MANUAL_REVIEW` with actor `PARTNER`.
 - [x] Change `PartnerApplication.resubmit(...)` to append a `MANUAL_REVIEW` event for the new immutable revision.
-- [x] Update only the existing assertions that expect a new submission or resubmission to be `PENDING_REVIEW`; preserve assertions for legacy restored `PENDING_REVIEW` aggregates and staff transitions.
+- [ ] Update only the existing assertions that expect a new submission or resubmission to be `PENDING_REVIEW`; preserve assertions for legacy restored `PENDING_REVIEW` aggregates and staff transitions.
+- [ ] Remove fixture transitions from initial `MANUAL_REVIEW` to `MANUAL_REVIEW`; adjust history lengths and event sequences. In the optimistic-locking scenario, use two distinct valid staff decisions from `MANUAL_REVIEW`.
 - [x] Inspect record conversion and persistence round-trip; change them only if they contain status-specific assumptions that prevent `MANUAL_REVIEW` from being stored and restored.
 - [x] Inspect all production references to `submit` and `resubmit`; confirm none overwrites the aggregate status with `PENDING_REVIEW`.
-- [x] Mark the corresponding implementation items in `openspec/changes/partner-requisites-verification/tasks.md` complete after the changes are reviewable.
+- [ ] Mark the corresponding implementation items in `openspec/changes/partner-requisites-verification/tasks.md` complete after the changes are reviewable.
 
 ### Task 2: Review the resulting change
 
