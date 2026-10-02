@@ -15,7 +15,9 @@ export function StaffLoginPage({ onAuthenticated }) {
       const session = await loginStaff(String(form.get('username')).trim(), String(form.get('password')));
       onAuthenticated(session);
     } catch (requestError) {
-      setError(requestError.status === 401 ? 'Проверьте логин и пароль и попробуйте ещё раз.' : requestError.message);
+      if (requestError.status === 401) setError('Проверьте логин и пароль и попробуйте ещё раз.');
+      else if (requestError.status === 503) setError('Вход недоступен: проверьте настройки и доступность корпоративного LDAP.');
+      else setError(requestError.message);
     } finally {
       setLoading(false);
     }

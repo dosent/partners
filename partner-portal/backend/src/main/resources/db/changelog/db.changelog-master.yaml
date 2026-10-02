@@ -169,17 +169,17 @@ databaseChangeLog:
             columnNames: application_id, event_number
             constraintName: uq_partner_application_status_event
   - include:
-      file: db/changelog/002-staff-rbac.yaml
+      file: 002-staff-rbac.yaml
       relativeToChangelogFile: true
   - include:
-      file: db/changelog/003-partner-application-moderation.yaml
+      file: 003-partner-application-moderation.yaml
       relativeToChangelogFile: true
   - include:
-      file: db/changelog/004-registration-content.yaml
+      file: 004-registration-content.yaml
       relativeToChangelogFile: true
   - include:
-      file: db/changelog/005-consent-publication-snapshot.yaml
+      file: 005-consent-publication-snapshot.yaml
       relativeToChangelogFile: true
   - include:
-      file: db/changelog/006-partner-type-offers.yaml
+      file: 006-partner-type-offers.yaml
       relativeToChangelogFile: true
