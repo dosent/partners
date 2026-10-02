@@ -37,6 +37,9 @@ public class PartnerApplicationRecord {
     @Column(nullable = false, length = 32)
     private PartnerApplicationStatus status;
 
+    @Column(name = "assigned_manager_username", length = 255)
+    private String assignedManagerUsername;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -64,6 +67,7 @@ public class PartnerApplicationRecord {
             PartnerApplication application, RegistrationDataProtector protector) {
         var record = new PartnerApplicationRecord(application.id(), application.identityProvider(),
                 application.externalSubject(), application.status());
+        record.assignedManagerUsername = application.assignedManagerUsername();
         record.appendRevisions(application.revisions(), 0, protector);
         record.appendStatusEvents(application.statusHistory(), 0);
         return record;
@@ -86,6 +90,7 @@ public class PartnerApplicationRecord {
         appendRevisions(application.revisions(), revisions.size(), protector);
         appendStatusEvents(application.statusHistory(), statusHistory.size());
         status = application.status();
+        assignedManagerUsername = application.assignedManagerUsername();
     }
 
     private void appendRevisions(List<PartnerApplicationRevision> source, int fromIndex,
@@ -113,7 +118,7 @@ public class PartnerApplicationRecord {
     }
 
     public PartnerApplication toDomain(RegistrationDataProtector protector) {
-        return PartnerApplication.restore(id, identityProvider, externalSubject, status,
+        return PartnerApplication.restore(id, identityProvider, externalSubject, status, assignedManagerUsername,
                 revisions.stream().map(revision -> revision.toDomain(protector)).toList(),
                 statusHistory.stream().map(PartnerApplicationStatusRecord::toDomain).toList());
     }
@@ -133,6 +138,8 @@ public class PartnerApplicationRecord {
     public PartnerApplicationStatus getStatus() {
         return status;
     }
+
+    public String getAssignedManagerUsername() { return assignedManagerUsername; }
 
     public long getVersion() {
         return version;

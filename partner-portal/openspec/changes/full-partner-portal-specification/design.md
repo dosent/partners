@@ -50,7 +50,7 @@ JPA entity не передаётся через API и не использует
 
 ### 5. Аутентификация и безопасность
 
-Партнёры используют Yandex ID OAuth 2.0 Authorization Code Flow; identity моделируется как `provider + subject`, что допускает новых провайдеров. Сотрудники используют LDAP; группы сопоставляются внутренним ролям конфигурацией. Backend создаёт HttpOnly/Secure/SameSite сессию, включает CSRF-защиту и не передаёт external access token в SPA.
+Партнёры используют Yandex ID OAuth 2.0 Authorization Code Flow; identity моделируется как `provider + subject`, что допускает новых провайдеров. Сотрудники проходят LDAPS-аутентификацию FreeIPA; роли и permissions назначаются и проверяются внутренней RBAC-моделью приложения, а LDAP-группы не выдают права. Bootstrap `SYSTEM_ADMIN` — `ivan.neshin`, который тоже обязан пройти LDAP. Backend создаёт HttpOnly/Secure/SameSite сессию, включает CSRF-защиту и не передаёт external access token в SPA.
 
 Чувствительные реквизиты шифруются на уровне приложения или managed storage; для дедупликации используется нормализованный keyed hash. В логах значения маскируются. Проверка файлов включает allow-list типов, размер, контрольную сумму и антивирусный статус.
 

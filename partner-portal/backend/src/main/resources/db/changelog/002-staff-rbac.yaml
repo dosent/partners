@@ -1,0 +1,109 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-staff-rbac
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: staff_role_grant
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: staff_role_grant
+            columnNames: username, role
+            constraintName: uq_staff_role_grant_username_role
+        - createIndex:
+            tableName: staff_role_grant
+            indexName: idx_staff_role_grant_username
+            columns:
+              - column:
+                  name: username
+        - createTable:
+            tableName: staff_role_audit
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: actor
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: changed_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: staff_role_audit
+            indexName: idx_staff_role_audit_username_changed_at
+            columns:
+              - column:
+                  name: username
+              - column:
+                  name: changed_at
+        - insert:
+            tableName: staff_role_grant
+            columns:
+              - column:
+                  name: id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: username
+                  value: ivan.neshin
+              - column:
+                  name: role
+                  value: SYSTEM_ADMIN
+        - insert:
+            tableName: staff_role_audit
+            columns:
+              - column:
+                  name: id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: username
+                  value: ivan.neshin
+              - column:
+                  name: role
+                  value: SYSTEM_ADMIN
+              - column:
+                  name: actor
+                  value: liquibase-bootstrap
+              - column:
+                  name: action
+                  value: GRANTED
+              - column:
+                  name: changed_at
+                  valueComputed: CURRENT_TIMESTAMP

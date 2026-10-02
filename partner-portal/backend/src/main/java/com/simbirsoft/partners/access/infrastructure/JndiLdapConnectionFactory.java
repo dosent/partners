@@ -1,6 +1,7 @@
 package com.simbirsoft.partners.access.infrastructure;
 
 import java.util.Hashtable;
+import jakarta.annotation.PostConstruct;
 import javax.naming.Context;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
@@ -14,6 +15,14 @@ public final class JndiLdapConnectionFactory implements LdapConnectionFactory {
         this.properties = properties;
     }
 
+    @PostConstruct
+    void configureCaTrust() {
+        if (properties.enabled()) {
+            if (!properties.configured()) throw new IllegalStateException("LDAP is enabled but settings are incomplete");
+            LdapCaSocketFactory.configure(properties.caCertFile());
+        }
+    }
+
     @Override
     public DirContext open(String principal, String password) throws javax.naming.NamingException {
         Hashtable<String, Object> environment = new Hashtable<>();
@@ -23,6 +32,7 @@ public final class JndiLdapConnectionFactory implements LdapConnectionFactory {
         environment.put(Context.SECURITY_PRINCIPAL, principal);
         environment.put(Context.SECURITY_CREDENTIALS, password);
         environment.put(Context.REFERRAL, "ignore");
+        environment.put("java.naming.ldap.factory.socket", LdapCaSocketFactory.class.getName());
         environment.put("com.sun.jndi.ldap.connect.timeout", timeoutMillis(properties.connectTimeout()));
         environment.put("com.sun.jndi.ldap.read.timeout", timeoutMillis(properties.readTimeout()));
         return new InitialDirContext(environment);

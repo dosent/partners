@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { House, Users, ClipboardText, Coins, FileText, User, CaretDown, CaretRight, Plus, MagnifyingGlass, DownloadSimple, Check, List, ShieldCheck, ArrowRight } from '@phosphor-icons/react';
 import { initialLeads, initialVacancies, candidatePool, payments, money, downloadFile } from './data';
 import { Badge, SectionTitle, LeadTable, Modal, Field } from './components';
+import { getStaffSession, logoutStaff } from './api/staffAccessApi';
+import { StaffLoginPage } from './admin/StaffLoginPage';
+import { StaffAccessPendingPage } from './admin/StaffAccessPendingPage';
+import { StaffRoleManagementPage } from './admin/StaffRoleManagementPage';
 const navigation=[['overview','Обзор',House],['leads','Лиды',Users],['vacancies','Заявки на специалистов',ClipboardText],['finance','Вознаграждения',Coins],['documents','Документы',FileText]];
-export function App(){
+function PartnerApp(){
  const [page,setPage]=useState('overview'),[leads,setLeads]=useState(initialLeads),[vacancies,setVacancies]=useState(initialVacancies),[modal,setModal]=useState(null),[selected,setSelected]=useState(null),[targetVacancy,setTargetVacancy]=useState(null),[candidateQuery,setCandidateQuery]=useState(''),[candidateRequests,setCandidateRequests]=useState([]),[query,setQuery]=useState(''),[filter,setFilter]=useState('Все статусы'),[toast,setToast]=useState(''),[menu,setMenu]=useState(false),[mobileNav,setMobileNav]=useState(false),[signed,setSigned]=useState(false),[profile,setProfile]=useState({name:'Алексей Лебедев',company:'ООО «Партнёр»',email:'alexey@example.com',phone:'+7 (900) 000-00-00',inn:'7300000000'}),[dispute,setDispute]=useState(false),[registrationType,setRegistrationType]=useState('individual'),[registrationComplete,setRegistrationComplete]=useState(false);
  const notify=text=>{setToast(text);setTimeout(()=>setToast(''),4500);};
  const go=p=>{setPage(p);setSelected(null);setQuery('');setFilter('Все статусы');setMenu(false);setMobileNav(false);};
@@ -40,4 +44,23 @@ export function App(){
  {modal==='notifications'&&<Modal title="Уведомления" onClose={()=>setModal(null)}>{candidateRequests.length>0&&<button className="notification-item" onClick={()=>{setModal(null);go('vacancies');}}><ShieldCheck size={25}/><span><strong>Запрос на назначение отправлен</strong><small>Ожидается подтверждение SimbirSoft</small></span><CaretRight size={20}/></button>}{candidateCount>0&&<button className="notification-item" onClick={()=>{setModal(null);go('vacancies');}}><Users size={25}/><span><strong>Кандидаты ждут решения</strong><small>Альфа Логистика · 22 сентября</small></span><CaretRight size={20}/></button>}{!signed&&<button className="notification-item" onClick={()=>setModal('document')}><FileText size={25}/><span><strong>Акт за август готов</strong><small>Документы · 21 сентября</small></span><CaretRight size={20}/></button>}<div className="notification-item"><Check size={25}/><span><strong>Ваш аккаунт активен</strong><small>Можно создавать лиды и заявки</small></span></div></Modal>}
  {modal==='dispute'&&<Modal title={dispute?'Обращение ФН-024':'Вопрос по начислению'} onClose={()=>setModal(null)}>{dispute?<><Badge>Новый</Badge><p className="detail-description">Обращение зарегистрировано в демонстрационной сессии. В рабочей системе здесь появится ответ финансового контролёра.</p></>:<form onSubmit={e=>{e.preventDefault();setDispute(true);notify('Обращение ФН-024 создано');setModal(null);}}><div className="form-grid"><Field label="Проект" wide><select>{payments.map(p=><option key={p.project}>{p.project}</option>)}</select></Field><Field label="Что нужно уточнить? *" wide><textarea required rows={5} placeholder="Опишите расхождение в начислении"/></Field></div><div className="modal-actions"><button className="primary">Создать обращение</button></div></form>}</Modal>}
  </div>
+}
+
+function StaffPortal() {
+ const [path,setPath]=useState(window.location.pathname),[session,setSession]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ useEffect(()=>{const onPop=()=>setPath(window.location.pathname);window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
+ useEffect(()=>{let active=true;setLoading(true);getStaffSession().then(value=>{if(active){setSession(value);setError('');}}).catch(requestError=>{if(active){setSession(null);if(requestError.status!==401) setError(requestError.message);}}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[]);
+ const navigate=target=>{window.history.pushState({},'',target);setPath(target);};
+ const acceptSession=value=>{setSession(value);setError('');navigate(value.accessState==='ACCESS_PENDING'?'/staff/access/pending':'/staff');};
+ const refreshSession=async()=>{setLoading(true);setError('');try{const value=await getStaffSession();setSession(value);if(value.accessState==='ACTIVE')navigate('/staff');}catch(requestError){setError(requestError.message);}finally{setLoading(false);}};
+ const signOut=async()=>{try{await logoutStaff();}catch(requestError){setError(requestError.message);}finally{setSession(null);navigate('/staff/login');}};
+ if(loading)return <div className="staff-loading" role="status">Проверяем доступ…</div>;
+ if(!session)return <StaffLoginPage onAuthenticated={acceptSession}/>;
+ if(session.accessState==='ACCESS_PENDING')return <StaffAccessPendingPage session={session} onRecheck={refreshSession} onLogout={signOut} loading={loading} error={error}/>;
+ if(path==='/staff/access/roles')return <StaffRoleManagementPage session={session} onBack={()=>navigate('/staff')} onLogout={signOut}/>;
+ return <div className="staff-app"><a className="staff-brand" href="/staff" onClick={event=>{event.preventDefault();navigate('/staff');}}><img src="/assets/logo.svg" alt="SimbirSoft"/><span>Партнёрский портал</span></a><main className="staff-main"><section className="staff-card staff-state-card"><span className="staff-icon"><ShieldCheck size={27}/></span><p className="staff-eyebrow">Вход выполнен</p><h1>Здравствуйте, {session.username}</h1><p className="staff-intro">Доступные разделы портала будут показаны здесь.</p>{(session.permissions??[]).includes('staff.access.manage')&&<button className="primary" onClick={()=>navigate('/staff/access/roles')}>Управление доступом<ArrowRight size={18}/></button>}{error&&<p className="staff-error" role="alert">{error}</p>}<button className="staff-secondary" onClick={signOut}>Выйти</button></section></main><footer className="staff-footer">Корпоративный доступ SimbirSoft</footer></div>;
+}
+
+export function App(){
+ return window.location.pathname.startsWith('/staff')?<StaffPortal/>:<PartnerApp/>;
 }

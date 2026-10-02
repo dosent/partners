@@ -11,6 +11,7 @@ public final class PartnerApplication {
     private final String identityProvider;
     private final String externalSubject;
     private final PartnerApplicationStatus status;
+    private final String assignedManagerUsername;
     private final List<PartnerApplicationRevision> revisions;
     private final List<PartnerApplicationStatusEvent> statusHistory;
 
@@ -19,12 +20,17 @@ public final class PartnerApplication {
             String identityProvider,
             String externalSubject,
             PartnerApplicationStatus status,
+            String assignedManagerUsername,
             List<PartnerApplicationRevision> revisions,
             List<PartnerApplicationStatusEvent> statusHistory) {
         this.id = Objects.requireNonNull(id, "id is required");
         this.identityProvider = requireText(identityProvider, "identityProvider");
         this.externalSubject = requireText(externalSubject, "externalSubject");
         this.status = Objects.requireNonNull(status, "status is required");
+        this.assignedManagerUsername = assignedManagerUsername;
+        if (assignedManagerUsername != null && status != PartnerApplicationStatus.APPROVED) {
+            throw new IllegalArgumentException("A manager can only be assigned to an approved application");
+        }
         this.revisions = List.copyOf(revisions);
         this.statusHistory = List.copyOf(statusHistory);
     }
@@ -40,7 +46,7 @@ public final class PartnerApplication {
         var initialStatus = new PartnerApplicationStatusEvent(
                 PartnerApplicationStatus.MANUAL_REVIEW, "PARTNER", null, submittedAt);
         return new PartnerApplication(id, identityProvider, externalSubject,
-                PartnerApplicationStatus.MANUAL_REVIEW, List.of(revision), List.of(initialStatus));
+                PartnerApplicationStatus.MANUAL_REVIEW, null, List.of(revision), List.of(initialStatus));
     }
 
     public static PartnerApplication restore(
@@ -48,6 +54,17 @@ public final class PartnerApplication {
             String identityProvider,
             String externalSubject,
             PartnerApplicationStatus status,
+            List<PartnerApplicationRevision> revisions,
+            List<PartnerApplicationStatusEvent> statusHistory) {
+        return restore(id, identityProvider, externalSubject, status, null, revisions, statusHistory);
+    }
+
+    public static PartnerApplication restore(
+            UUID id,
+            String identityProvider,
+            String externalSubject,
+            PartnerApplicationStatus status,
+            String assignedManagerUsername,
             List<PartnerApplicationRevision> revisions,
             List<PartnerApplicationStatusEvent> statusHistory) {
         if (revisions.isEmpty() || statusHistory.isEmpty()) {
@@ -62,7 +79,7 @@ public final class PartnerApplication {
             throw new IllegalArgumentException("Current status must match the last history event");
         }
         return new PartnerApplication(id, identityProvider, externalSubject,
-                status, revisions, statusHistory);
+                status, assignedManagerUsername, revisions, statusHistory);
     }
 
     public PartnerApplication changeStatus(
@@ -80,11 +97,40 @@ public final class PartnerApplication {
         if (!allowed) {
             throw new IllegalStateException("Status transition is not allowed: " + status + " -> " + nextStatus);
         }
-        var event = new PartnerApplicationStatusEvent(nextStatus, changedBy, reason, changedAt);
+        var history = new ArrayList<>(statusHistory);
+        history.add(new PartnerApplicationStatusEvent(nextStatus, changedBy, reason, changedAt));
+        return new PartnerApplication(id, identityProvider, externalSubject,
+                nextStatus, nextStatus == PartnerApplicationStatus.APPROVED ? assignedManagerUsername : null,
+                revisions, history);
+    }
+
+    public PartnerApplication decide(PartnerApplicationStatus nextStatus, String changedBy, String reason,
+                                     String managerUsername, Instant changedAt) {
+        if (status != PartnerApplicationStatus.MANUAL_REVIEW) {
+            throw new IllegalStateException("Only applications under manual review can be decided");
+        }
+        if (nextStatus != PartnerApplicationStatus.APPROVED
+                && nextStatus != PartnerApplicationStatus.REJECTED
+                && nextStatus != PartnerApplicationStatus.CHANGES_REQUESTED) {
+            throw new IllegalArgumentException("Unsupported moderation decision");
+        }
+        String normalizedReason = reason == null ? null : reason.trim();
+        if (nextStatus != PartnerApplicationStatus.APPROVED) {
+            if (normalizedReason == null || normalizedReason.isEmpty() || normalizedReason.length() > 1000
+                    || normalizedReason.chars().anyMatch(Character::isISOControl)) {
+                throw new IllegalArgumentException("A safe decision reason is required");
+            }
+        }
+        String normalizedManager = managerUsername == null ? null : managerUsername.trim().toLowerCase(java.util.Locale.ROOT);
+        if (normalizedManager != null && (normalizedManager.isBlank() || nextStatus != PartnerApplicationStatus.APPROVED)) {
+            throw new IllegalArgumentException("A manager can only be assigned during approval");
+        }
+        var event = new PartnerApplicationStatusEvent(nextStatus, changedBy,
+                normalizedReason == null || normalizedReason.isEmpty() ? null : normalizedReason, changedAt);
         var history = new ArrayList<>(statusHistory);
         history.add(event);
         return new PartnerApplication(id, identityProvider, externalSubject,
-                nextStatus, revisions, history);
+                nextStatus, normalizedManager, revisions, history);
     }
 
     public PartnerApplication resubmit(
@@ -101,7 +147,7 @@ public final class PartnerApplication {
         statusHistoryCopy.add(new PartnerApplicationStatusEvent(
                 PartnerApplicationStatus.MANUAL_REVIEW, "PARTNER", null, submittedAt));
         return new PartnerApplication(id, identityProvider, externalSubject,
-                PartnerApplicationStatus.MANUAL_REVIEW, revisionHistory, statusHistoryCopy);
+                PartnerApplicationStatus.MANUAL_REVIEW, null, revisionHistory, statusHistoryCopy);
     }
 
     public UUID id() {
@@ -119,6 +165,8 @@ public final class PartnerApplication {
     public PartnerApplicationStatus status() {
         return status;
     }
+
+    public String assignedManagerUsername() { return assignedManagerUsername; }
 
     public List<PartnerApplicationRevision> revisions() {
         return revisions;

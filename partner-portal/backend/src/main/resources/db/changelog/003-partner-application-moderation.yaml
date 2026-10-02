@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-partner-application-moderation
+      author: partner-portal
+      changes:
+        - addColumn:
+            tableName: partner_application
+            columns:
+              - column:
+                  name: assigned_manager_username
+                  type: varchar(255)
+                  constraints:
+                    nullable: true

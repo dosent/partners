@@ -24,8 +24,34 @@ OAuth-приложение регистрируется на стороне Yand
 
 `SESSION_COOKIE_SECURE` в Compose выключен только для локального HTTP. В production требуется HTTPS и `SESSION_COOKIE_SECURE=true`. `.env` не коммитится; клиентский bundle не получает OAuth credentials.
 
-## Вход сотрудника через LDAP
+## Вход сотрудника через LDAP и управление доступом
 
-LDAP-вход включается только после настройки каталога: `LDAP_ENABLED=true`, `LDAP_URL` со схемой `ldaps://`, DN-шаблон `LDAP_USER_DN_PATTERN` с одним placeholder `{0}`, `LDAP_GROUP_SEARCH_BASE` и фильтр `LDAP_GROUP_SEARCH_FILTER`. Незашифрованный `ldap://` отклоняется, чтобы не передавать пароль сотрудника без TLS. Сертификат LDAPS должен доверяться JVM truststore; для корпоративного CA настройте truststore контейнера при запуске. По умолчанию фильтр ищет группы `groupOfNames` по атрибуту `member`; для другого каталога его можно заменить. LDAP соединение использует bind проверяемой учётной записью; отдельная сервисная учётка и локальное хранение паролей не используются.
+Backend проверяет пароль сотрудника через LDAPS; LDAP-группы не назначают роли портала. Роли и permissions
+хранятся во внутренней RBAC. При первом запуске миграция назначает `SYSTEM_ADMIN` пользователю `ivan.neshin`;
+для входа этому сотруднику всё равно нужно пройти LDAPS.
 
-Укажите полный DN группы для нужных переменных `LDAP_GROUP_PARTNER_MANAGER`, `LDAP_GROUP_RESOURCE_MANAGER`, `LDAP_GROUP_FINANCE_CONTROLLER` и `LDAP_GROUP_SYSTEM_ADMIN`. Не сопоставленная группа не даёт доступ. `/api/v1/auth/staff/login` принимает username/password только для LDAP bind, создаёт серверную HttpOnly-сессию с сопоставленными ролями и не сохраняет пароль. Перед POST клиент получает CSRF token с `GET /api/v1/auth/csrf` и передаёт cookie сессии вместе с заголовком из ответа (по умолчанию `X-XSRF-TOKEN`). Все LDAP адреса и DN должны быть заданы в локальном `.env` или secret store; не коммитьте реальные значения.
+Для окружения SimbirSoft используйте следующие настройки в локальном `.env` или secret store:
+
+```dotenv
+LDAP_ENABLED=true
+LDAP_URL=ldaps://freeipa01.simbirsoft:636/
+LDAP_USERS_DN=cn=users,cn=accounts,dc=simbirsoft,dc=dev
+LDAP_CA_CERT_SOURCE=/secure/path/simbirsoft-ca.crt
+```
+
+`LDAP_CA_CERT_SOURCE` — путь к сертификату на хосте; Compose монтирует его read-only как
+`/app/certs/simbirsoft-ca.crt`. Сертификат не хранится в репозитории или образе. Если LDAP-вход включён,
+недоступный CA или ошибка проверки TLS завершают аутентификацию с отказом, без insecure fallback.
+Если CA-файл не читается при включённом LDAP, приложение завершает запуск с ошибкой конфигурации.
+Пользовательский DN строится как escaped `uid=<username>,<LDAP_USERS_DN>`. Для другой среды замените URL,
+пользовательский DN и путь к CA в конфигурации окружения.
+
+Сотрудник без назначенных ролей после успешного LDAP bind получает ограниченную сессию `ACCESS_PENDING`
+и страницу с просьбой обратиться к администратору портала. До назначения роли доступны проверка состояния
+сессии и выход; бизнес- и административные API закрыты. Назначения выполняются через
+`/api/v1/admin/staff-access/users/{username}/roles` сотрудником с permission `staff.access.manage`.
+Изменения ролей применяются к уже открытой сессии на следующем запросе.
+
+Changeset `002-staff-rbac.yaml` создаёт внутренние таблицы назначения/аудита и bootstrap grant;
+`003-partner-application-moderation.yaml` добавляет поле назначенного менеджера к заявке. Оба файла
+подключены из master changelog после существующей модели заявок.
