@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-consent-publication-snapshot
+      author: partner-portal
+      changes:
+        - addColumn:
+            tableName: partner_application_consent
+            columns:
+              - column:
+                  name: content_version
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_sha256
+                  type: varchar(64)

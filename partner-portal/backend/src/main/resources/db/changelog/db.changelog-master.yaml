@@ -174,3 +174,9 @@ databaseChangeLog:
   - include:
       file: db/changelog/003-partner-application-moderation.yaml
       relativeToChangelogFile: true
+  - include:
+      file: db/changelog/004-registration-content.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: db/changelog/005-consent-publication-snapshot.yaml
+      relativeToChangelogFile: true

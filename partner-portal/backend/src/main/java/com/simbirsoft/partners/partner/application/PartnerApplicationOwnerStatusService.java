@@ -19,8 +19,12 @@ public class PartnerApplicationOwnerStatusService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var lastEvent = application.getStatusHistory().isEmpty() ? null
                 : application.getStatusHistory().get(application.getStatusHistory().size() - 1).toDomain();
-        return new OwnerStatus(application.getStatus(), lastEvent == null ? null : lastEvent.reason());
+        var revisions = application.getRevisions();
+        String locale = revisions.isEmpty() ? null : revisions.get(revisions.size() - 1).getConsents().stream()
+                .findFirst().map(com.simbirsoft.partners.partner.infrastructure.PartnerApplicationConsentRecord::getLocale)
+                .orElse(null);
+        return new OwnerStatus(application.getStatus(), lastEvent == null ? null : lastEvent.reason(), locale);
     }
 
-    public record OwnerStatus(PartnerApplicationStatus status, String latestDecisionReason) { }
+    public record OwnerStatus(PartnerApplicationStatus status, String latestDecisionReason, String locale) { }
 }

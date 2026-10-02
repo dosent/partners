@@ -40,6 +40,8 @@ public class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers("/api/v1/auth/yandex/session").hasRole("PARTNER")
                         .requestMatchers("/api/v1/auth/staff/session", "/api/v1/auth/staff/logout").hasRole("STAFF")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/partner-applications").hasRole("PARTNER")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/partner-applications/me").hasRole("PARTNER")
                         .requestMatchers("/api/v1/partner-applications/me").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/admin/partner-applications/*/approve",
@@ -50,6 +52,7 @@ public class SecurityConfiguration {
                         .hasAuthority("partner.application.read")
                         .requestMatchers("/api/v1/admin/partner-applications/**")
                         .hasAuthority("partner.application.read")
+                        .requestMatchers("/api/v1/admin/registration-content/**").hasAuthority("localization.manage")
                         .requestMatchers("/api/v1/admin/staff-access/**").hasAuthority("staff.access.manage")
                         .anyRequest().authenticated())
                 .addFilterBefore(new StaffAccessRefreshFilter(staffAccess, objectMapper), AuthorizationFilter.class)

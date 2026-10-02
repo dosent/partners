@@ -77,6 +77,12 @@ public class ApiExceptionHandler {
         return error(status, code, message, List.of(), request);
     }
 
+    @ExceptionHandler(FieldValidationException.class)
+    ResponseEntity<ApiError> fieldValidation(FieldValidationException exception, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, exception.getCode(), "Request validation failed",
+                List.of(new ApiError.FieldError(exception.getField(), exception.getReason())), request);
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> unexpected(Exception exception, HttpServletRequest request) {
         if (exception instanceof ErrorResponse response) {

@@ -90,8 +90,13 @@ public class PartnerApplicationRevisionRecord {
         if (!offer.getLocale().equals(privacy.getLocale())) {
             throw new IllegalStateException("Consent locales do not match");
         }
+        if (offer.getContentVersion() != privacy.getContentVersion()
+                || !java.util.Objects.equals(offer.getContentSha256(), privacy.getContentSha256())) {
+            throw new IllegalStateException("Consent publication snapshots do not match");
+        }
         var consent = new LegalConsent(offer.getLocale(), offer.getAcceptedVersion(), offer.getAcceptedAt(),
-                privacy.getAcceptedVersion(), privacy.getAcceptedAt());
+                privacy.getAcceptedVersion(), privacy.getAcceptedAt(), offer.getContentVersion(),
+                offer.getContentSha256());
         var protectedData = new ProtectedRegistrationData(encryptedPayload, taxIdentifierHash);
         return new PartnerApplicationRevision(revisionNumber, protector.reveal(protectedData), consent, submittedAt);
     }

@@ -101,10 +101,12 @@ public class PartnerApplicationRecord {
                     protectedData.encryptedPayload(), protectedData.taxIdentifierHash(), revision.submittedAt());
             revisionRecord.addConsent(new PartnerApplicationConsentRecord(revisionRecord, ConsentType.OFFER,
                     revision.consent().locale(), revision.consent().offerVersion(),
-                    revision.consent().offerAcceptedAt()));
+                    revision.consent().offerAcceptedAt(), revision.consent().contentVersion(),
+                    revision.consent().contentSha256()));
             revisionRecord.addConsent(new PartnerApplicationConsentRecord(revisionRecord,
                     ConsentType.PERSONAL_DATA_PROCESSING, revision.consent().locale(),
-                    revision.consent().privacyNoticeVersion(), revision.consent().privacyAcceptedAt()));
+                    revision.consent().privacyNoticeVersion(), revision.consent().privacyAcceptedAt(),
+                    revision.consent().contentVersion(), revision.consent().contentSha256()));
             revisions.add(revisionRecord);
         });
     }

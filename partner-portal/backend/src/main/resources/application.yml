@@ -39,6 +39,7 @@ partners:
   registration:
     encryption-key: ${REGISTRATION_ENCRYPTION_KEY:}
     hash-key: ${REGISTRATION_HASH_KEY:}
+    approved-logo-asset-keys: ${PARTNER_REGISTRATION_APPROVED_LOGO_ASSET_KEYS:}
   auth:
     ldap:
       enabled: ${LDAP_ENABLED:false}

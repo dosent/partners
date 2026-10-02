@@ -1,0 +1,177 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-registration-content
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: registration_content_draft
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: locale
+                  type: varchar(2)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_registration_content_draft_locale
+              - column:
+                  name: draft_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strings_json
+                  type: jsonb
+              - column:
+                  name: offer_version
+                  type: varchar(100)
+              - column:
+                  name: offer_title
+                  type: text
+              - column:
+                  name: offer_body
+                  type: text
+              - column:
+                  name: privacy_notice_version
+                  type: varchar(100)
+              - column:
+                  name: privacy_notice_title
+                  type: text
+              - column:
+                  name: privacy_notice_body
+                  type: text
+              - column:
+                  name: logo_asset_key
+                  type: varchar(32)
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addCheckConstraint:
+            tableName: registration_content_draft
+            constraintName: ck_registration_content_draft_locale
+            constraint: "locale in ('RU', 'KZ', 'EN')"
+        - addCheckConstraint:
+            tableName: registration_content_draft
+            constraintName: ck_registration_content_draft_logo
+            constraint: "logo_asset_key is null or logo_asset_key in ('simbirsoft', '17soft')"
+        - createTable:
+            tableName: registration_content_publication
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: locale
+                  type: varchar(2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_version
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strings_json
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: offer_version
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: offer_title
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: offer_body
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: privacy_notice_version
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: privacy_notice_title
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: privacy_notice_body
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: logo_asset_key
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_sha256
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: registration_content_publication
+            columnNames: locale, content_version
+            constraintName: uq_registration_content_publication_version
+        - addCheckConstraint:
+            tableName: registration_content_publication
+            constraintName: ck_registration_content_publication_locale
+            constraint: "locale in ('RU', 'KZ', 'EN')"
+        - addCheckConstraint:
+            tableName: registration_content_publication
+            constraintName: ck_registration_content_publication_logo
+            constraint: "logo_asset_key in ('simbirsoft', '17soft')"
+        - createTable:
+            tableName: registration_content_current
+            columns:
+              - column:
+                  name: locale
+                  type: varchar(2)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: publication_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_registration_content_current_publication
+                    foreignKeyName: fk_registration_content_current_publication
+                    references: registration_content_publication(id)
+        - addCheckConstraint:
+            tableName: registration_content_current
+            constraintName: ck_registration_content_current_locale
+            constraint: "locale in ('RU', 'KZ', 'EN')"

@@ -56,3 +56,31 @@ export async function replaceStaffRoles(username, roles) {
     body: JSON.stringify({ roles }),
   }));
 }
+
+export async function getManualReviewQueue(page = 0, size = 20) {
+  return decode(await fetch(`${API}/admin/partner-applications?page=${page}&size=${size}`, {
+    credentials: 'include',
+  }));
+}
+
+export async function getPartnerApplication(id) {
+  return decode(await fetch(`${API}/admin/partner-applications/${encodeURIComponent(id)}`, {
+    credentials: 'include',
+  }));
+}
+
+async function submitModerationDecision(id, decision, payload) {
+  const headers = await csrfHeaders();
+  return decode(await fetch(`${API}/admin/partner-applications/${encodeURIComponent(id)}/${decision}`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(payload),
+  }));
+}
+
+export const approvePartnerApplication = (id, assignedManagerUsername) =>
+  submitModerationDecision(id, 'approve', assignedManagerUsername ? { assignedManagerUsername } : {});
+export const rejectPartnerApplication = (id, reason) =>
+  submitModerationDecision(id, 'reject', { reason });
+export const requestPartnerApplicationChanges = (id, reason) =>
+  submitModerationDecision(id, 'request-changes', { reason });
