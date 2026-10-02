@@ -38,9 +38,9 @@ public final class PartnerApplication {
             Instant submittedAt) {
         var revision = new PartnerApplicationRevision(1, registrationData, consent, submittedAt);
         var initialStatus = new PartnerApplicationStatusEvent(
-                PartnerApplicationStatus.PENDING_REVIEW, "PARTNER", null, submittedAt);
+                PartnerApplicationStatus.MANUAL_REVIEW, "PARTNER", null, submittedAt);
         return new PartnerApplication(id, identityProvider, externalSubject,
-                PartnerApplicationStatus.PENDING_REVIEW, List.of(revision), List.of(initialStatus));
+                PartnerApplicationStatus.MANUAL_REVIEW, List.of(revision), List.of(initialStatus));
     }
 
     public static PartnerApplication restore(
@@ -99,9 +99,9 @@ public final class PartnerApplication {
         revisionHistory.add(nextRevision);
         var statusHistoryCopy = new ArrayList<>(statusHistory);
         statusHistoryCopy.add(new PartnerApplicationStatusEvent(
-                PartnerApplicationStatus.PENDING_REVIEW, "PARTNER", null, submittedAt));
+                PartnerApplicationStatus.MANUAL_REVIEW, "PARTNER", null, submittedAt));
         return new PartnerApplication(id, identityProvider, externalSubject,
-                PartnerApplicationStatus.PENDING_REVIEW, revisionHistory, statusHistoryCopy);
+                PartnerApplicationStatus.MANUAL_REVIEW, revisionHistory, statusHistoryCopy);
     }
 
     public UUID id() {

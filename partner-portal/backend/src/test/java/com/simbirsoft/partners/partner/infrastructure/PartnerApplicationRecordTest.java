@@ -35,10 +35,10 @@ class PartnerApplicationRecordTest {
         assertThat(restored.revisions()).extracting(revision -> revision.revisionNumber())
                 .containsExactly(1, 2);
         assertThat(restored.statusHistory()).extracting(event -> event.status())
-                .containsExactly(PartnerApplicationStatus.PENDING_REVIEW,
+                .containsExactly(PartnerApplicationStatus.MANUAL_REVIEW,
                         PartnerApplicationStatus.MANUAL_REVIEW,
                         PartnerApplicationStatus.REJECTED,
-                        PartnerApplicationStatus.PENDING_REVIEW);
+                        PartnerApplicationStatus.MANUAL_REVIEW);
     }
 
     private static PartnerRegistrationData registrationData() {

@@ -12,15 +12,17 @@ class PartnerApplicationTest {
     private static final Instant SUBMITTED_AT = Instant.parse("2026-10-01T10:00:00Z");
 
     @Test
-    void submissionStartsAtRevisionOnePendingReviewAndPreservesConsent() {
+    void submissionStartsAtRevisionOneManualReviewAndPreservesConsent() {
         PartnerApplication application = PartnerApplication.submit(
                 UUID.randomUUID(), "yandex", "subject-1", individual(), consent(), SUBMITTED_AT);
 
-        assertThat(application.status()).isEqualTo(PartnerApplicationStatus.PENDING_REVIEW);
+        assertThat(application.status()).isEqualTo(PartnerApplicationStatus.MANUAL_REVIEW);
         assertThat(application.revisions()).hasSize(1);
         assertThat(application.revisions().getFirst().revisionNumber()).isEqualTo(1);
         assertThat(application.revisions().getFirst().consent()).isEqualTo(consent());
         assertThat(application.statusHistory()).hasSize(1);
+        assertThat(application.statusHistory().getFirst().status()).isEqualTo(PartnerApplicationStatus.MANUAL_REVIEW);
+        assertThat(application.statusHistory().getFirst().changedBy()).isEqualTo("PARTNER");
     }
 
     @Test
@@ -33,7 +35,7 @@ class PartnerApplicationTest {
         PartnerApplication resubmitted = application.resubmit(
                 individual(), consent(), SUBMITTED_AT.plusSeconds(60));
 
-        assertThat(resubmitted.status()).isEqualTo(PartnerApplicationStatus.PENDING_REVIEW);
+        assertThat(resubmitted.status()).isEqualTo(PartnerApplicationStatus.MANUAL_REVIEW);
         assertThat(resubmitted.revisions()).hasSize(2);
         assertThat(resubmitted.revisions()).extracting(PartnerApplicationRevision::revisionNumber)
                 .containsExactly(1, 2);
