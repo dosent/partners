@@ -72,6 +72,6 @@
 - Review: `openspec/changes/partner-registration/specs/partner-registration/spec.md`
 - Review: `openspec/changes/partner-registration/specs/partner-application-review/spec.md`
 
-- [ ] Check that all active registration requirements consistently say every submission receives human review.
-- [ ] Check the final diff for unintended edits and whitespace errors.
-- [ ] Record which automated checks were not run; do not report them as passing.
+- [x] Check that all active registration requirements consistently say every submission receives human review; preserve legacy `PENDING_REVIEW` display/access behavior.
+- [x] Check the final diff for unintended edits and whitespace errors.
+- [x] Record that test suites were not run and the backend/test sources were compile-checked; do not report unrun tests as passing.
