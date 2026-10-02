@@ -28,13 +28,15 @@ async function csrfHeaders() {
   return token ? { [name]: token } : {};
 }
 
-export const getPartnerSession = () => decode(fetch(`${API}/auth/yandex/session`, { credentials: 'include' }));
+export const getPartnerSession = () => fetch(`${API}/auth/yandex/session`, { credentials: 'include' }).then(decode);
 
-export const getRegistrationContent = locale => decode(fetch(
+export const getRegistrationContent = locale => fetch(
   `${API}/public/registration-content/${encodeURIComponent(locale)}`, { credentials: 'include' },
-));
+).then(decode);
 
-export const getMyPartnerApplication = () => decode(fetch(`${API}/partner-applications/me`, { credentials: 'include' }));
+export const getMyPartnerApplication = () => fetch(
+  `${API}/partner-applications/me`, { credentials: 'include' },
+).then(decode);
 
 export async function submitPartnerApplication(payload, resubmit = false) {
   const headers = await csrfHeaders();
