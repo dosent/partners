@@ -42,12 +42,15 @@ public class PartnerApplicationConsentRecord {
     @Column(name = "content_sha256", length = 64)
     private String contentSha256;
 
+    @Column(name = "document_sha256", length = 64)
+    private String documentSha256;
+
     protected PartnerApplicationConsentRecord() {
     }
 
     PartnerApplicationConsentRecord(PartnerApplicationRevisionRecord revision, ConsentType consentType,
                                     String locale, String acceptedVersion, Instant acceptedAt,
-                                    int contentVersion, String contentSha256) {
+                                    int contentVersion, String contentSha256, String documentSha256) {
         this.id = UUID.randomUUID();
         this.revision = revision;
         this.consentType = consentType;
@@ -56,6 +59,7 @@ public class PartnerApplicationConsentRecord {
         this.acceptedAt = acceptedAt;
         this.contentVersion = contentVersion;
         this.contentSha256 = contentSha256;
+        this.documentSha256 = documentSha256;
     }
 
     public ConsentType getConsentType() {
@@ -77,4 +81,5 @@ public class PartnerApplicationConsentRecord {
     public int getContentVersion() { return contentVersion; }
 
     public String getContentSha256() { return contentSha256; }
+    public String getDocumentSha256() { return documentSha256; }
 }

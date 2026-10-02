@@ -23,8 +23,10 @@ public record PartnerApplicationSubmissionRequest(
         @NotBlank @Size(max = 8) String locale,
         @Positive int contentVersion,
         @NotBlank @Size(max = 100) String offerVersion,
+        @NotBlank @jakarta.validation.constraints.Pattern(regexp = "[0-9a-f]{64}") String offerSha256,
         boolean offerAccepted,
         @NotBlank @Size(max = 100) String privacyNoticeVersion,
+        @NotBlank @jakarta.validation.constraints.Pattern(regexp = "[0-9a-f]{64}") String privacyNoticeSha256,
         boolean privacyAccepted) {
 
     @AssertTrue(message = "Offer acceptance is required")
@@ -41,7 +43,7 @@ public record PartnerApplicationSubmissionRequest(
 
     public PartnerApplicationSubmission toCommand() {
         return new PartnerApplicationSubmission(partnerType, fullName, email, phone, countryCode, region,
-                companyName, taxIdentifier, locale, contentVersion, offerVersion, offerAccepted,
-                privacyNoticeVersion, privacyAccepted);
+                companyName, taxIdentifier, locale, contentVersion, offerVersion, offerSha256,
+                offerAccepted, privacyNoticeVersion, privacyNoticeSha256, privacyAccepted);
     }
 }

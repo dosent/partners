@@ -15,6 +15,8 @@ public record PartnerApplicationSubmission(
         String locale,
         int contentVersion,
         String offerVersion,
+        String offerSha256,
         boolean offerAccepted,
         String privacyNoticeVersion,
+        String privacyNoticeSha256,
         boolean privacyAccepted) { }

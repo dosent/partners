@@ -1,6 +1,7 @@
 package com.simbirsoft.partners.access.application;
 
 import java.util.Locale;
+import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,9 @@ public class StaffAccessService implements StaffRoleLookup {
     public StaffAccessService(StaffRoleGrantStore grants) { this.grants = grants; }
 
     public Set<StaffRole> rolesFor(String username) { return grants.rolesFor(normalize(username)); }
+
+    @Transactional(readOnly = true)
+    public List<StaffRoleAssignment> usersWithRoles() { return grants.usersWithRoles(); }
 
     public Set<StaffPermission> permissionsFor(String username) {
         return StaffRolePolicy.permissions(rolesFor(username));
@@ -42,4 +46,6 @@ public class StaffAccessService implements StaffRoleLookup {
         if (username == null || username.isBlank()) throw new IllegalArgumentException("Username is required");
         return username.trim().toLowerCase(Locale.ROOT);
     }
+
+    public record StaffRoleAssignment(String username, List<String> roles) { }
 }

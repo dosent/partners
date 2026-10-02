@@ -31,6 +31,16 @@ public class StaffRoleAdminController {
     private final StaffAccessService access;
     public StaffRoleAdminController(StaffAccessService access) { this.access = access; }
 
+    @GetMapping
+    @Operation(summary = "Получить список сотрудников с назначенными ролями")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Список назначений ролей"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав")})
+    public UsersResponse users(@AuthenticationPrincipal StaffPrincipal actor) {
+        requireAdministrator(actor);
+        return new UsersResponse(access.usersWithRoles().stream()
+                .map(user -> new RoleResponse(user.username(), user.roles())).toList());
+    }
+
     @GetMapping("/{username}/roles")
     @Operation(summary = "Получить назначенные сотруднику роли")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Назначенные роли"),
@@ -69,4 +79,6 @@ public class StaffRoleAdminController {
     public record ReplaceRolesRequest(@NotNull Set<@NotBlank String> roles) {}
     @Schema(description = "Назначенные роли сотрудника")
     public record RoleResponse(String username, List<String> roles) {}
+    @Schema(description = "Пользователи портала с назначенными ролями")
+    public record UsersResponse(List<RoleResponse> users) {}
 }

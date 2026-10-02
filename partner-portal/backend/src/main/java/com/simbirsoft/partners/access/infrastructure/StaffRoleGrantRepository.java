@@ -6,5 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StaffRoleGrantRepository extends JpaRepository<StaffRoleGrantRecord, UUID> {
     List<StaffRoleGrantRecord> findAllByUsername(String username);
+    List<StaffRoleGrantRecord> findAllByOrderByUsernameAscRoleAsc();
     void deleteAllByUsername(String username);
 }

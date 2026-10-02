@@ -1,0 +1,31 @@
+.staff-main:has(.staff-role-card) { width: min(100% - 48px, 1080px); }
+.staff-role-card .staff-search-label { display: block; margin-top: 20px; color: #42516e; font-size: 13px; }
+.staff-role-card > .staff-lookup-row { align-items: center; border: 1px solid #dce3ef; border-radius: 8px; padding: 0 12px; color: #8190a8; }
+.staff-role-card > .staff-lookup-row input { border: 0; outline: 0; box-shadow: none; }
+.staff-users-table-wrap { overflow-x: auto; margin-top: 18px; border: 1px solid var(--line); border-radius: 9px; }
+.staff-users-table { min-width: 620px; font-size: 13px; }
+.staff-users-table thead { background: #f6f8fb; }
+.staff-users-table th, .staff-users-table td { height: auto; padding: 13px 15px; }
+.staff-users-table tbody th { font-size: 13px; text-align: left; white-space: nowrap; }
+.staff-users-table td { color: #5b6982; line-height: 1.5; }
+.staff-users-table tbody tr:hover { background: #fafcff; }
+.staff-users-table .staff-text-button { color: var(--blue); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.staff-users-table .staff-text-button:hover { text-decoration: underline; }
+.staff-empty-state, .staff-empty-filter { padding: 25px 12px; text-align: center; color: #697791; }
+.staff-empty-state { margin-top: 16px; background: #f7f9fc; border-radius: 9px; }
+.staff-empty-state h2 { font-size: 17px; color: #34445f; }
+.staff-empty-state p { margin-top: 7px; font-size: 13px; line-height: 1.6; }
+.staff-add-user { border-top: 1px solid var(--line); padding-top: 18px; }
+.staff-role-card .staff-lookup-row { align-items: center; }
+.staff-role-card .staff-lookup-row svg { flex: none; color: #8190a8; }
+.staff-role-card .staff-lookup-row input { height: 46px; }
+.staff-role-card .staff-lookup-row:has(svg) { border: 1px solid #dce3ef; border-radius: 8px; padding: 0 12px; }
+.staff-role-card .staff-lookup-row:has(svg) input { border: 0; outline: 0; box-shadow: none; padding-left: 2px; }
+.staff-role-card .staff-lookup-row:not(:has(svg)) input { flex: 1; }
+.staff-role-card .staff-lookup-row:not(:has(svg)) .primary { flex: none; }
+
+@media (max-width: 700px) {
+  .staff-main:has(.staff-role-card) { width: min(100% - 24px, 1080px); }
+  .staff-role-card .staff-lookup-row:not(:has(svg)) { flex-direction: column; }
+  .staff-role-card .staff-lookup-row:not(:has(svg)) .primary { width: 100%; }
+}

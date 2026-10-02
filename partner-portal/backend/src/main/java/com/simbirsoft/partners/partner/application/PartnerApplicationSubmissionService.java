@@ -108,16 +108,22 @@ public class PartnerApplicationSubmissionService {
         var published = contentLookup.findPublished(requestedLocale)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                         "Registration is temporarily unavailable for this language"));
+        var selectedOffer = published.offers().get(com.simbirsoft.partners.localization.domain.OfferType.valueOf(
+                submission.partnerType().name()));
         if (!requestedLocale.equals(normalizeLocale(published.locale()))
                 || submission.contentVersion() != published.contentVersion()
-                || !Objects.equals(published.offerVersion(), submission.offerVersion())
-                || !Objects.equals(published.privacyNoticeVersion(), submission.privacyNoticeVersion())) {
+                || selectedOffer == null
+                || !Objects.equals(selectedOffer.version(), submission.offerVersion())
+                || !Objects.equals(selectedOffer.sha256(), submission.offerSha256())
+                || !Objects.equals(published.privacyNotice().version(), submission.privacyNoticeVersion())
+                || !Objects.equals(published.privacyNotice().sha256(), submission.privacyNoticeSha256())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Registration documents have changed; reload the registration form");
         }
         Instant acceptedAt = Instant.now();
-        return new LegalConsent(published.locale(), published.offerVersion(), acceptedAt,
-                published.privacyNoticeVersion(), acceptedAt, published.contentVersion(), published.contentSha256());
+        return new LegalConsent(published.locale(), selectedOffer.version(), acceptedAt,
+                published.privacyNotice().version(), acceptedAt, published.contentVersion(), published.contentSha256(),
+                selectedOffer.sha256(), published.privacyNotice().sha256());
     }
 
     private static boolean isIdentityConflict(DataIntegrityViolationException exception) {

@@ -56,7 +56,7 @@ public class PartnerApplicationStatusRecord {
         this.changedAt = changedAt;
     }
 
-    PartnerApplicationStatusEvent toDomain() {
+    public PartnerApplicationStatusEvent toDomain() {
         return new PartnerApplicationStatusEvent(status, changedBy, reason, changedAt);
     }
 }

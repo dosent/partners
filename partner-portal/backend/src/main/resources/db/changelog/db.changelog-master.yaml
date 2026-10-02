@@ -180,3 +180,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/005-consent-publication-snapshot.yaml
       relativeToChangelogFile: true
+  - include:
+      file: db/changelog/006-partner-type-offers.yaml
+      relativeToChangelogFile: true

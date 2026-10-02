@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowClockwise, ArrowDown, ArrowUp, FloppyDisk, Globe, UploadSimple } from '@phosphor-icons/react';
-import { getRegistrationContentAdmin, publishRegistrationContent, saveRegistrationContentDraft } from '../api/registrationContentAdminApi';
+import { getRegistrationContentAdmin, publishRegistrationContent, registrationContentLocale, saveRegistrationContentDraft } from '../api/registrationContentAdminApi';
 import './RegistrationContentPage.css';
 
-const locales = [
-  { id: 'ru', label: 'Русский', brand: 'SimbirSoft' },
-  { id: 'kz', label: 'Қазақша', brand: '17Soft' },
-  { id: 'en', label: 'English', brand: 'SimbirSoft' },
+const offerTypes = [
+  { id: 'INDIVIDUAL', label: 'Физическое лицо' },
+  { id: 'SOLE_PROPRIETOR', label: 'ИП' },
+  { id: 'LEGAL_ENTITY', label: 'Юридическое лицо' },
 ];
+const emptyOffer = () => ({ version: '', title: '', body: '' });
 const requiredKeys = [
   'registration.title', 'registration.types.individual', 'registration.types.legalEntity',
   'registration.types.soleProprietor', 'registration.fields.fullName', 'registration.fields.email',
@@ -17,7 +18,7 @@ const requiredKeys = [
   'registration.ui.loading', 'registration.auth.title', 'registration.auth.info', 'registration.auth.action',
   'registration.auth.back', 'registration.errors.conflict', 'registration.errors.unavailable',
   'registration.errors.sessionExpired', 'registration.errors.generic', 'registration.errors.taxIdentifier',
-  'registration.locale.label', 'registration.status.PENDING_REVIEW', 'registration.status.MANUAL_REVIEW',
+  'registration.status.PENDING_REVIEW', 'registration.status.MANUAL_REVIEW',
   'registration.status.CHANGES_REQUESTED', 'registration.status.REJECTED', 'registration.status.APPROVED',
   'registration.status.approvedInfo', 'registration.status.pendingInfo', 'registration.status.resubmitInfo',
   'registration.actions.resubmit', 'registration.actions.retry', 'registration.actions.refresh',
@@ -48,7 +49,6 @@ const labels = {
   'registration.errors.sessionExpired': 'Ошибка: сессия истекла',
   'registration.errors.generic': 'Общая ошибка формы',
   'registration.errors.taxIdentifier': 'Ошибка формата ИНН / БИН',
-  'registration.locale.label': 'Подпись выбора языка',
   'registration.status.PENDING_REVIEW': 'Статус: ожидает проверки',
   'registration.status.MANUAL_REVIEW': 'Статус: ручная проверка',
   'registration.status.CHANGES_REQUESTED': 'Статус: запрошены изменения',
@@ -69,11 +69,11 @@ const labels = {
   'portal.section.documents': 'Раздел кабинета: документы', 'portal.welcome': 'Пустое состояние обзора',
   'portal.emptySection': 'Пустое состояние раздела',
 };
-const emptyValue = () => ({ strings: Object.fromEntries(requiredKeys.map(key => [key, ''])), offerVersion: '', offerTitle: '', offerBody: '', privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
+const emptyValue = () => ({ strings: Object.fromEntries(requiredKeys.map(key => [key, ''])), offers: Object.fromEntries(offerTypes.map(type => [type.id, emptyOffer()])), privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
 const unwrap = result => result?.data ?? result;
 
 export function RegistrationContentPage({ session, onBack, onLogout }) {
-  const [locale, setLocale] = useState('ru');
+  const locale = registrationContentLocale;
   const [state, setState] = useState(null);
   const [draft, setDraft] = useState(emptyValue);
   const [mode, setMode] = useState('edit');
@@ -83,7 +83,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
   const [missing, setMissing] = useState([]);
   const importRef = useRef(null);
   const canManage = (session?.permissions ?? []).includes('localization.manage');
-  const localeInfo = locales.find(item => item.id === locale);
+  const localeInfo = { id: 'ru', label: 'Русский', brand: 'SimbirSoft' };
   const published = state?.published ?? null;
   const extraKeys = useMemo(() => Object.keys(draft.strings ?? {}).filter(key => !requiredKeys.includes(key)).sort(), [draft.strings]);
 
@@ -94,7 +94,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
     try {
       const response = unwrap(await getRegistrationContentAdmin(target));
       setState(response);
-      setDraft({ ...emptyValue(), ...(response.draft ?? {}), strings: { ...emptyValue().strings, ...(response.draft?.strings ?? {}) } });
+      setDraft({ ...emptyValue(), ...(response.draft ?? {}), strings: { ...emptyValue().strings, ...(response.draft?.strings ?? {}) }, offers: { ...emptyValue().offers, ...(response.draft?.offers ?? {}) } });
       setMode('edit');
     } catch (requestError) {
       setState(null); setError(requestError.message);
@@ -102,6 +102,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
   }
 
   function updateField(field, value) { setDraft(current => ({ ...current, [field]: value })); }
+  function updateOffer(type, field, value) { setDraft(current => ({ ...current, offers: { ...current.offers, [type]: { ...current.offers[type], [field]: value } } })); }
   function updateString(key, value) { setDraft(current => ({ ...current, strings: { ...current.strings, [key]: value } })); }
 
   async function saveDraft(event) {
@@ -111,16 +112,14 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
       const response = unwrap(await saveRegistrationContentDraft(locale, {
         expectedDraftVersion: state?.draftVersion ?? 0,
         strings: draft.strings,
-        offerVersion: draft.offerVersion,
-        offerTitle: draft.offerTitle,
-        offerBody: draft.offerBody,
+        offers: draft.offers,
         privacyNoticeVersion: draft.privacyNoticeVersion,
         privacyNoticeTitle: draft.privacyNoticeTitle,
         privacyNoticeBody: draft.privacyNoticeBody,
         logoAssetKey: draft.logoAssetKey || null,
       }));
       setState(response);
-      setDraft({ ...emptyValue(), ...(response.draft ?? {}), strings: { ...emptyValue().strings, ...(response.draft?.strings ?? {}) } });
+      setDraft({ ...emptyValue(), ...(response.draft ?? {}), strings: { ...emptyValue().strings, ...(response.draft?.strings ?? {}) }, offers: { ...emptyValue().offers, ...(response.draft?.offers ?? {}) } });
       setNotice('Черновик сохранён.');
     } catch (requestError) {
       setError(requestError.status === 409 ? 'Черновик изменён другим администратором. Обновите данные перед сохранением.' : requestError.message);
@@ -161,7 +160,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
       const content = parsed.content ?? parsed;
       if (parsed.locale && parsed.locale !== locale) throw new Error(`Файл содержит локаль ${parsed.locale}, сейчас выбрана ${locale}.`);
       if (!content || typeof content !== 'object' || !content.strings || typeof content.strings !== 'object') throw new Error('В JSON не найден объект content.strings.');
-      setDraft({ ...emptyValue(), ...content, strings: { ...emptyValue().strings, ...content.strings } });
+      setDraft({ ...emptyValue(), ...content, strings: { ...emptyValue().strings, ...content.strings }, offers: { ...emptyValue().offers, ...(content.offers ?? {}) } });
       setNotice('Данные загружены в форму. Сохраните черновик, чтобы применить изменения.');
       setMode('edit');
     } catch (parseError) { setError(parseError instanceof SyntaxError ? 'Не удалось прочитать JSON-файл.' : parseError.message); }
@@ -170,9 +169,8 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
   if (!canManage) return <div className="registration-content-shell"><section className="registration-content-card"><p className="registration-content-kicker">Администрирование</p><h1>Недостаточно прав</h1><p>Для управления локализованным контентом требуется разрешение localization.manage.</p><button type="button" className="rc-button rc-button-secondary" onClick={onBack}>Вернуться в кабинет</button></section></div>;
 
   return <div className="registration-content-shell">
-    <header className="registration-content-header"><div><p className="registration-content-kicker">Настройки портала</p><h1>Контент регистрации</h1><p>Редактируйте локализованные подписи и юридические документы. Публикация открывает регистрацию для выбранной локали.</p></div><div className="rc-header-actions"><button type="button" className="rc-button rc-button-secondary" onClick={onLogout}>Выйти</button></div></header>
+    <header className="registration-content-header"><div><p className="registration-content-kicker">Настройки портала</p><h1>Контент регистрации</h1><p>Редактируйте русские подписи и тексты оферт для каждого типа заявителя.</p></div><div className="rc-header-actions"><button type="button" className="rc-button rc-button-secondary" onClick={onLogout}>Выйти</button></div></header>
     <div className="registration-content-toolbar">
-      <div className="rc-locale-picker" role="tablist" aria-label="Локаль"><Globe size={19}/>{locales.map(item => <button type="button" role="tab" aria-selected={locale === item.id} className={locale === item.id ? 'is-active' : ''} key={item.id} onClick={() => setLocale(item.id)} disabled={busy}>{item.label}</button>)}</div>
       <div className="rc-view-switch"><button type="button" className={mode === 'edit' ? 'is-active' : ''} onClick={() => setMode('edit')}>Черновик</button><button type="button" className={mode === 'published' ? 'is-active' : ''} onClick={() => setMode('published')} disabled={!published}>Опубликовано</button></div>
     </div>
     {error && <div className="rc-alert rc-alert-error" role="alert"><strong>{error}</strong>{missing.length > 0 && <ul>{missing.map(item => <li key={item}>{item}</li>)}</ul>}</div>}
@@ -186,7 +184,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
           {extraKeys.length > 0 && <details className="rc-extra-keys"><summary>Дополнительные ключи ({extraKeys.length})</summary><div className="rc-fields-grid">{extraKeys.map(key => <label className="rc-field" key={key}><span><code>{key}</code></span><textarea value={draft.strings[key] ?? ''} onChange={event => updateString(key, event.target.value)} maxLength={12000} rows={2}/></label>)}</div></details>}
           <AddStringField onAdd={(key) => updateString(key, '')} existingKeys={Object.keys(draft.strings ?? {})}/>
         </section>
-        <section className="rc-panel"><div className="rc-panel-heading"><div><span className="rc-step">02</span><h2>Публичная оферта</h2></div><small>Вводит и утверждает уполномоченный сотрудник</small></div><div className="rc-fields-grid rc-document-meta"><label className="rc-field">Версия<input value={draft.offerVersion ?? ''} onChange={event => updateField('offerVersion', event.target.value)} maxLength={100}/></label><label className="rc-field">Заголовок<input value={draft.offerTitle ?? ''} onChange={event => updateField('offerTitle', event.target.value)} maxLength={1000}/></label></div><label className="rc-field">Текст утверждённой оферты<textarea value={draft.offerBody ?? ''} onChange={event => updateField('offerBody', event.target.value)} rows={12} maxLength={500000} placeholder="Вставьте предоставленный и утверждённый юридический текст"/></label></section>
+        <section className="rc-panel"><div className="rc-panel-heading"><div><span className="rc-step">02</span><h2>Оферты по типу заявителя</h2></div><small>Все три текста обязательны для публикации</small></div>{offerTypes.map(type => <div key={type.id}><h3>{type.label}</h3><div className="rc-fields-grid rc-document-meta"><label className="rc-field">Версия<input value={draft.offers?.[type.id]?.version ?? ''} onChange={event => updateOffer(type.id, 'version', event.target.value)} maxLength={100}/></label><label className="rc-field">Заголовок<input value={draft.offers?.[type.id]?.title ?? ''} onChange={event => updateOffer(type.id, 'title', event.target.value)} maxLength={1000}/></label></div><label className="rc-field">Текст утверждённой оферты<textarea value={draft.offers?.[type.id]?.body ?? ''} onChange={event => updateOffer(type.id, 'body', event.target.value)} rows={12} maxLength={500000} placeholder="Вставьте предоставленный и утверждённый юридический текст"/></label></div>)}</section>
         <section className="rc-panel"><div className="rc-panel-heading"><div><span className="rc-step">03</span><h2>Согласие на обработку персональных данных</h2></div><small>Вводит и утверждает уполномоченный сотрудник</small></div><div className="rc-fields-grid rc-document-meta"><label className="rc-field">Версия<input value={draft.privacyNoticeVersion ?? ''} onChange={event => updateField('privacyNoticeVersion', event.target.value)} maxLength={100}/></label><label className="rc-field">Заголовок<input value={draft.privacyNoticeTitle ?? ''} onChange={event => updateField('privacyNoticeTitle', event.target.value)} maxLength={1000}/></label></div><label className="rc-field">Текст утверждённого согласия<textarea value={draft.privacyNoticeBody ?? ''} onChange={event => updateField('privacyNoticeBody', event.target.value)} rows={12} maxLength={500000} placeholder="Вставьте предоставленный и утверждённый юридический текст"/></label></section>
         <footer className="rc-editor-footer"><div className="rc-footer-meta">Черновик v{state?.draftVersion ?? 0}{state?.draftUpdatedBy && <span> · изменён {state.draftUpdatedBy}</span>}</div><div className="rc-actions"><input ref={importRef} type="file" accept="application/json,.json" hidden onChange={importJson}/><button type="button" className="rc-button rc-button-secondary" onClick={() => importRef.current?.click()} disabled={busy}><ArrowUp size={17}/>Импорт JSON</button><button type="button" className="rc-button rc-button-secondary" onClick={() => exportJson('draft')} disabled={busy}><ArrowDown size={17}/>Экспорт JSON</button><button type="submit" className="rc-button rc-button-primary" disabled={busy}><FloppyDisk size={18}/>{busy ? 'Сохраняем…' : 'Сохранить черновик'}</button><button type="button" className="rc-button rc-button-publish" onClick={publish} disabled={busy}><UploadSimple size={18}/>{busy ? 'Обработка…' : 'Опубликовать'}</button></div></footer>
       </form>}
@@ -204,5 +202,5 @@ function AddStringField({ onAdd, existingKeys }) {
 function PublishedView({ published, localeInfo, onExport }) {
   if (!published) return <section className="rc-panel rc-empty-published"><span className="rc-step"><Globe size={20}/></span><h2>Публикации пока нет</h2><p>Заполните и опубликуйте черновик. Пока у локали нет полной опубликованной версии, регистрация для неё останется закрыта.</p></section>;
   const content = published.content ?? {};
-  return <section className="rc-panel rc-published-view"><div className="rc-panel-heading"><div><span className="rc-step">v{published.contentVersion}</span><h2>Опубликованный снимок</h2></div><button className="rc-button rc-button-secondary" type="button" onClick={onExport}><ArrowDown size={17}/>Экспорт JSON</button></div><dl className="rc-snapshot-meta"><div><dt>Локаль</dt><dd>{localeInfo.label} ({localeInfo.id.toUpperCase()})</dd></div><div><dt>Бренд</dt><dd>{localeInfo.brand}</dd></div><div><dt>Версия оферты</dt><dd>{content.offerVersion || '—'}</dd></div><div><dt>Версия согласия</dt><dd>{content.privacyNoticeVersion || '—'}</dd></div><div><dt>Опубликовано</dt><dd>{published.publishedAt ? new Date(published.publishedAt).toLocaleString() : '—'}</dd></div><div><dt>Опубликовал</dt><dd>{published.publishedBy || '—'}</dd></div><div className="rc-checksum"><dt>SHA-256</dt><dd>{published.contentSha256 || '—'}</dd></div></dl><h3>Подписи интерфейса</h3><div className="rc-snapshot-strings">{Object.entries(content.strings ?? {}).map(([key, value]) => <div key={key}><code>{key}</code><span>{value || '—'}</span></div>)}</div><h3>Публичная оферта · {content.offerTitle || 'без заголовка'}</h3><pre className="rc-legal-preview">{content.offerBody || 'Текст не заполнен'}</pre><h3>Согласие · {content.privacyNoticeTitle || 'без заголовка'}</h3><pre className="rc-legal-preview">{content.privacyNoticeBody || 'Текст не заполнен'}</pre></section>;
+  return <section className="rc-panel rc-published-view"><div className="rc-panel-heading"><div><span className="rc-step">v{published.contentVersion}</span><h2>Опубликованный снимок</h2></div><button className="rc-button rc-button-secondary" type="button" onClick={onExport}><ArrowDown size={17}/>Экспорт JSON</button></div><dl className="rc-snapshot-meta"><div><dt>Локаль</dt><dd>{localeInfo.label} ({localeInfo.id.toUpperCase()})</dd></div><div><dt>Бренд</dt><dd>{localeInfo.brand}</dd></div><div><dt>Версия согласия</dt><dd>{content.privacyNoticeVersion || '—'}</dd></div><div><dt>Опубликовано</dt><dd>{published.publishedAt ? new Date(published.publishedAt).toLocaleString() : '—'}</dd></div><div><dt>Опубликовал</dt><dd>{published.publishedBy || '—'}</dd></div><div className="rc-checksum"><dt>SHA-256</dt><dd>{published.contentSha256 || '—'}</dd></div></dl><h3>Подписи интерфейса</h3><div className="rc-snapshot-strings">{Object.entries(content.strings ?? {}).map(([key, value]) => <div key={key}><code>{key}</code><span>{value || '—'}</span></div>)}</div>{offerTypes.map(type => <div key={type.id}><h3>Оферта: {type.label} · {content.offers?.[type.id]?.version || '—'}</h3><pre className="rc-legal-preview">{content.offers?.[type.id]?.body || 'Текст не заполнен'}</pre></div>)}<h3>Согласие · {content.privacyNoticeTitle || 'без заголовка'}</h3><pre className="rc-legal-preview">{content.privacyNoticeBody || 'Текст не заполнен'}</pre></section>;
 }

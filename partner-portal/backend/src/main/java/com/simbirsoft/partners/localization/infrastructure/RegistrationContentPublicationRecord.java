@@ -3,6 +3,8 @@ package com.simbirsoft.partners.localization.infrastructure;
 import com.simbirsoft.partners.localization.application.RegistrationContentStore.PublishedState;
 import com.simbirsoft.partners.localization.domain.RegistrationContentDraft;
 import com.simbirsoft.partners.localization.domain.RegistrationLocale;
+import com.simbirsoft.partners.localization.domain.OfferDocument;
+import com.simbirsoft.partners.localization.domain.OfferType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -33,9 +35,9 @@ class RegistrationContentPublicationRecord {
     @Column(name = "strings_json", nullable = false, columnDefinition = "jsonb", updatable = false)
     private Map<String, String> strings;
 
-    @Column(name = "offer_version", nullable = false, length = 100, updatable = false) private String offerVersion;
-    @Column(name = "offer_title", nullable = false, columnDefinition = "text", updatable = false) private String offerTitle;
-    @Column(name = "offer_body", nullable = false, columnDefinition = "text", updatable = false) private String offerBody;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "offers_json", columnDefinition = "jsonb", updatable = false)
+    private Map<OfferType, OfferDocument> offers;
     @Column(name = "privacy_notice_version", nullable = false, length = 100, updatable = false) private String privacyNoticeVersion;
     @Column(name = "privacy_notice_title", nullable = false, columnDefinition = "text", updatable = false) private String privacyNoticeTitle;
     @Column(name = "privacy_notice_body", nullable = false, columnDefinition = "text", updatable = false) private String privacyNoticeBody;
@@ -52,9 +54,7 @@ class RegistrationContentPublicationRecord {
         this.locale = locale.value();
         this.contentVersion = version;
         this.strings = content.strings();
-        this.offerVersion = content.offerVersion();
-        this.offerTitle = content.offerTitle();
-        this.offerBody = content.offerBody();
+        this.offers = content.offers();
         this.privacyNoticeVersion = content.privacyNoticeVersion();
         this.privacyNoticeTitle = content.privacyNoticeTitle();
         this.privacyNoticeBody = content.privacyNoticeBody();
@@ -67,7 +67,7 @@ class RegistrationContentPublicationRecord {
     UUID id() { return id; }
     PublishedState toState() {
         return new PublishedState(id, RegistrationLocale.valueOf(locale), contentVersion,
-                new RegistrationContentDraft(strings, offerVersion, offerTitle, offerBody,
+                new RegistrationContentDraft(strings, offers,
                         privacyNoticeVersion, privacyNoticeTitle, privacyNoticeBody, logoAssetKey),
                 checksum, publishedBy, publishedAt);
     }

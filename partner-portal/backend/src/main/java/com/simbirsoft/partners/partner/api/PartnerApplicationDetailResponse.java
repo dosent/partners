@@ -27,7 +27,7 @@ public record PartnerApplicationDetailResponse(
                                 data.countryCode(), data.region(), data.companyName(), data.taxIdentifier()),
                         new Consent(consent.locale(), consent.offerVersion(), consent.offerAcceptedAt(),
                                 consent.privacyNoticeVersion(), consent.privacyAcceptedAt(), consent.contentVersion(),
-                                consent.contentSha256())),
+                                consent.contentSha256(), consent.offerSha256(), consent.privacyNoticeSha256())),
                 application.statusHistory().stream().map(event -> new StatusEvent(event.status(),
                         event.changedBy(), event.reason(), event.changedAt())).toList());
     }
@@ -40,7 +40,8 @@ public record PartnerApplicationDetailResponse(
     @Schema(description = "Принятые версии документов")
     public record Consent(String locale, String offerVersion, Instant offerAcceptedAt,
                           String privacyNoticeVersion, Instant privacyAcceptedAt,
-                          int contentVersion, String contentSha256) { }
+                          int contentVersion, String contentSha256,
+                          String offerSha256, String privacyNoticeSha256) { }
     @Schema(description = "Запись неизменяемой истории статусов")
     public record StatusEvent(PartnerApplicationStatus status, String changedBy, String reason, Instant changedAt) { }
 }

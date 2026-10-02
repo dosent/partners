@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-partner-type-offers
+      author: partner-portal
+      changes:
+        - addColumn:
+            tableName: registration_content_draft
+            columns:
+              - column:
+                  name: offers_json
+                  type: jsonb
+        - addColumn:
+            tableName: registration_content_publication
+            columns:
+              - column:
+                  name: offers_json
+                  type: jsonb
+        - dropNotNullConstraint:
+            tableName: registration_content_publication
+            columnName: offer_version
+            columnDataType: varchar(100)
+        - dropNotNullConstraint:
+            tableName: registration_content_publication
+            columnName: offer_title
+            columnDataType: text
+        - dropNotNullConstraint:
+            tableName: registration_content_publication
+            columnName: offer_body
+            columnDataType: text
+        - addColumn:
+            tableName: partner_application_consent
+            columns:
+              - column:
+                  name: document_sha256
+                  type: varchar(64)

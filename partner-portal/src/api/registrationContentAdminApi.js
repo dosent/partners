@@ -1,4 +1,5 @@
 const API = '/api/v1';
+export const registrationContentLocale = 'ru';
 
 async function decode(response) {
   const payload = await response.json().catch(() => null);

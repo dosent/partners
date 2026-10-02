@@ -2,6 +2,8 @@ package com.simbirsoft.partners.localization.infrastructure;
 
 import com.simbirsoft.partners.localization.domain.RegistrationContentDraft;
 import com.simbirsoft.partners.localization.domain.RegistrationLocale;
+import com.simbirsoft.partners.localization.domain.OfferDocument;
+import com.simbirsoft.partners.localization.domain.OfferType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -30,9 +32,9 @@ class RegistrationContentDraftRecord {
     @Column(name = "strings_json", columnDefinition = "jsonb")
     private Map<String, String> strings;
 
-    @Column(name = "offer_version", length = 100) private String offerVersion;
-    @Column(name = "offer_title", columnDefinition = "text") private String offerTitle;
-    @Column(name = "offer_body", columnDefinition = "text") private String offerBody;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "offers_json", columnDefinition = "jsonb")
+    private Map<OfferType, OfferDocument> offers;
     @Column(name = "privacy_notice_version", length = 100) private String privacyNoticeVersion;
     @Column(name = "privacy_notice_title", columnDefinition = "text") private String privacyNoticeTitle;
     @Column(name = "privacy_notice_body", columnDefinition = "text") private String privacyNoticeBody;
@@ -53,9 +55,7 @@ class RegistrationContentDraftRecord {
 
     void replaceContent(RegistrationContentDraft content) {
         this.strings = content.strings();
-        this.offerVersion = content.offerVersion();
-        this.offerTitle = content.offerTitle();
-        this.offerBody = content.offerBody();
+        this.offers = content.offers();
         this.privacyNoticeVersion = content.privacyNoticeVersion();
         this.privacyNoticeTitle = content.privacyNoticeTitle();
         this.privacyNoticeBody = content.privacyNoticeBody();
@@ -72,7 +72,7 @@ class RegistrationContentDraftRecord {
     String updatedBy() { return updatedBy; }
     Instant updatedAt() { return updatedAt; }
     RegistrationContentDraft content() {
-        return new RegistrationContentDraft(strings, offerVersion, offerTitle, offerBody,
+        return new RegistrationContentDraft(strings, offers,
                 privacyNoticeVersion, privacyNoticeTitle, privacyNoticeBody, logoAssetKey);
     }
 }

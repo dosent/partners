@@ -102,11 +102,12 @@ public class PartnerApplicationRecord {
             revisionRecord.addConsent(new PartnerApplicationConsentRecord(revisionRecord, ConsentType.OFFER,
                     revision.consent().locale(), revision.consent().offerVersion(),
                     revision.consent().offerAcceptedAt(), revision.consent().contentVersion(),
-                    revision.consent().contentSha256()));
+                    revision.consent().contentSha256(), revision.consent().offerSha256()));
             revisionRecord.addConsent(new PartnerApplicationConsentRecord(revisionRecord,
                     ConsentType.PERSONAL_DATA_PROCESSING, revision.consent().locale(),
                     revision.consent().privacyNoticeVersion(), revision.consent().privacyAcceptedAt(),
-                    revision.consent().contentVersion(), revision.consent().contentSha256()));
+                    revision.consent().contentVersion(), revision.consent().contentSha256(),
+                    revision.consent().privacyNoticeSha256()));
             revisions.add(revisionRecord);
         });
     }

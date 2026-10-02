@@ -96,7 +96,7 @@ public class PartnerApplicationRevisionRecord {
         }
         var consent = new LegalConsent(offer.getLocale(), offer.getAcceptedVersion(), offer.getAcceptedAt(),
                 privacy.getAcceptedVersion(), privacy.getAcceptedAt(), offer.getContentVersion(),
-                offer.getContentSha256());
+                offer.getContentSha256(), offer.getDocumentSha256(), privacy.getDocumentSha256());
         var protectedData = new ProtectedRegistrationData(encryptedPayload, taxIdentifierHash);
         return new PartnerApplicationRevision(revisionNumber, protector.reveal(protectedData), consent, submittedAt);
     }

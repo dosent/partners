@@ -48,6 +48,10 @@ export async function getStaffRoles(username) {
   return decode(await fetch(`${API}/admin/staff-access/users/${encodeURIComponent(username)}/roles`, { credentials: 'include' }));
 }
 
+export async function getStaffUsersWithRoles() {
+  return decode(await fetch(`${API}/admin/staff-access/users`, { credentials: 'include' }));
+}
+
 export async function replaceStaffRoles(username, roles) {
   const headers = await csrfHeaders();
   return decode(await fetch(`${API}/admin/staff-access/users/${encodeURIComponent(username)}/roles`, {

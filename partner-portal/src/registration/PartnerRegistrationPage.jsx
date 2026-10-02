@@ -3,8 +3,19 @@ import { ArrowRight, Check, ShieldCheck } from '@phosphor-icons/react';
 import { Field } from '../components';
 import { getMyPartnerApplication, getPartnerSession, getRegistrationContent, submitPartnerApplication } from '../api/partnerRegistrationApi';
 
-const registrationLocales = ['RU', 'KZ', 'EN'];
-const localeStorageKey = 'partnerRegistrationLocale';
+const registrationLocale = 'RU';
+const fallbackStrings = {
+  'registration.ui.loading': 'Загружаем форму регистрации…',
+  'registration.auth.title': 'Войдите через Яндекс ID',
+  'registration.auth.info': 'Для подачи заявки войдите через Яндекс ID. Форма станет доступна после загрузки опубликованных документов.',
+  'registration.auth.action': 'Войти через Яндекс ID',
+  'registration.auth.back': 'Вернуться на страницу партнёрской программы',
+  'registration.errors.conflict': 'Документы обновились. Проверьте актуальную редакцию и подтвердите согласия ещё раз.',
+  'registration.errors.unavailable': 'Регистрация временно недоступна. Попробуйте позже.',
+  'registration.errors.sessionExpired': 'Сессия входа завершилась. Войдите через Яндекс ID ещё раз.',
+  'registration.errors.generic': 'Не удалось загрузить форму. Попробуйте ещё раз.',
+  'registration.actions.retry': 'Повторить',
+};
 const logoAssets = {
   simbirsoft: { src: '/assets/logo.svg', alt: 'SimbirSoft' },
   '17soft': { src: '/assets/17soft.svg', alt: '17Soft' },
@@ -19,7 +30,7 @@ const requiredRegistrationKeys = [
   'registration.ui.loading', 'registration.auth.title', 'registration.auth.info', 'registration.auth.action',
   'registration.auth.back', 'registration.errors.conflict', 'registration.errors.unavailable',
   'registration.errors.sessionExpired', 'registration.errors.generic', 'registration.errors.taxIdentifier',
-  'registration.locale.label', 'registration.status.PENDING_REVIEW', 'registration.status.MANUAL_REVIEW',
+  'registration.status.PENDING_REVIEW', 'registration.status.MANUAL_REVIEW',
   'registration.status.CHANGES_REQUESTED', 'registration.status.REJECTED', 'registration.status.APPROVED',
   'registration.status.approvedInfo', 'registration.status.pendingInfo', 'registration.status.resubmitInfo',
   'registration.actions.resubmit', 'registration.actions.retry', 'registration.actions.refresh',
@@ -51,10 +62,7 @@ function missingKeys(strings) {
 }
 
 export function PartnerRegistrationPage({ onBack }) {
-  const [locale, setLocale] = useState(() => {
-    const saved = sessionStorage.getItem(localeStorageKey) ?? localStorage.getItem(localeStorageKey) ?? 'RU';
-    return registrationLocales.includes(saved) ? saved : 'RU';
-  });
+  const locale = registrationLocale;
   const [session, setSession] = useState(null);
   const [content, setContent] = useState(null);
   const [application, setApplication] = useState(null);
@@ -63,21 +71,11 @@ export function PartnerRegistrationPage({ onBack }) {
   const [errorKey, setErrorKey] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [partnerType, setPartnerType] = useState('INDIVIDUAL');
-  const selectLocale = nextLocale => {
-    sessionStorage.setItem(localeStorageKey, nextLocale);
-    localStorage.setItem(localeStorageKey, nextLocale);
-    setLocale(nextLocale);
-  };
-
   const reload = useCallback(async () => {
     setLoading(true);
     setErrorKey('');
     setFieldErrors({});
     setContent(null);
-    if (!registrationLocales.includes(locale)) {
-      setLoading(false);
-      return;
-    }
     try {
       let currentSession = null;
       try {
@@ -90,16 +88,9 @@ export function PartnerRegistrationPage({ onBack }) {
         if (requestError.status === 404) return null;
         throw requestError;
       }) : null;
-      const preferredLocale = ownApplication?.locale?.toUpperCase();
-      const effectiveLocale = registrationLocales.includes(preferredLocale) ? preferredLocale : locale;
-      if (effectiveLocale !== locale) {
-        sessionStorage.setItem(localeStorageKey, effectiveLocale);
-        localStorage.setItem(localeStorageKey, effectiveLocale);
-        setLocale(effectiveLocale);
-      }
-      const published = await getRegistrationContent(effectiveLocale);
+      const published = await getRegistrationContent(locale);
       setContent(published);
-      localStorage.setItem(`partnerRegistrationStrings:${effectiveLocale}`, JSON.stringify(published.strings ?? {}));
+      localStorage.setItem(`partnerRegistrationStrings:${locale}`, JSON.stringify(published.strings ?? {}));
       setApplication(ownApplication);
     } catch (requestError) {
       setErrorKey(getErrorKey(requestError));
@@ -113,6 +104,11 @@ export function PartnerRegistrationPage({ onBack }) {
   const submit = async event => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const selectedOffer = content?.offers?.[partnerType];
+    if (!selectedOffer?.version || !selectedOffer?.body || !selectedOffer?.sha256 || !content?.privacyNotice?.sha256) {
+      setErrorKey('registration.errors.unavailable');
+      return;
+    }
     const hasBusinessData = partnerType !== 'INDIVIDUAL';
     const payload = {
       partnerType,
@@ -125,9 +121,11 @@ export function PartnerRegistrationPage({ onBack }) {
       taxIdentifier: hasBusinessData ? String(form.get('taxIdentifier') ?? '').trim() : null,
       locale: content.locale,
       contentVersion: content.contentVersion,
-      offerVersion: content.offerVersion,
+      offerVersion: selectedOffer.version,
+      offerSha256: selectedOffer.sha256,
       offerAccepted: form.get('offerAccepted') === 'on',
-      privacyNoticeVersion: content.privacyNoticeVersion,
+      privacyNoticeVersion: content.privacyNotice.version,
+      privacyNoticeSha256: content.privacyNotice.sha256,
       privacyAccepted: form.get('privacyAccepted') === 'on',
     };
     setSubmitting(true);
@@ -153,13 +151,14 @@ export function PartnerRegistrationPage({ onBack }) {
   };
 
   const activeStrings = content?.strings ?? readCachedStrings(locale);
-  const text = key => typeof activeStrings?.[key] === 'string' && activeStrings[key].trim() ? activeStrings[key] : '';
+  const text = key => typeof activeStrings?.[key] === 'string' && activeStrings[key].trim()
+    ? activeStrings[key]
+    : fallbackStrings[key] ?? '';
   const translatedError = text(errorKey);
   if (loading) return <section className="registration-state"><p role="status">{text('registration.ui.loading')}</p></section>;
-  if (content && missingKeys(content.strings).length) return <section className="registration-state"><LocalePicker locale={locale} onChange={selectLocale}/></section>;
+  if (content && missingKeys(content.strings).length) return <section className="registration-state"><p role="alert">Регистрация временно недоступна. Попробуйте позже.</p></section>;
   if (!session) return <section className="registration-state">
     <span className="attention-icon blue"><ShieldCheck size={27}/></span>
-    <LocalePicker locale={locale} onChange={selectLocale}/>
     {text('registration.auth.title') && <h2>{text('registration.auth.title')}</h2>}
     {text('registration.auth.info') && <p>{text('registration.auth.info')}</p>}
     {translatedError && <p className="registration-error" role="alert">{translatedError}</p>}
@@ -167,10 +166,7 @@ export function PartnerRegistrationPage({ onBack }) {
     {onBack && text('registration.auth.back') && <button className="text-button" onClick={onBack}>{text('registration.auth.back')}</button>}
   </section>;
 
-  if (!registrationLocales.includes(locale)) return <section className="registration-state" role="status" />;
-
   if (!content && errorKey) return <section className="registration-state">
-    <LocalePicker locale={locale} onChange={selectLocale}/>
     {translatedError && <p role="alert">{translatedError}</p>}
     {text('registration.actions.retry') && <button className="secondary" onClick={reload}>{text('registration.actions.retry')}</button>}
   </section>;
@@ -185,10 +181,12 @@ export function PartnerRegistrationPage({ onBack }) {
   </section>;
   }
 
-  if (!content) return <section className="registration-state"><LocalePicker locale={locale} onChange={selectLocale}/>{translatedError && <p role="alert">{translatedError}</p>}{text('registration.actions.retry') && <button className="secondary" onClick={reload}>{text('registration.actions.retry')}</button>}</section>;
+  if (!content) return <section className="registration-state">{translatedError && <p role="alert">{translatedError}</p>}{text('registration.actions.retry') && <button className="secondary" onClick={reload}>{text('registration.actions.retry')}</button>}</section>;
 
   const strings = content.strings ?? {};
-  if (missingKeys(strings).length) return <section className="registration-state"><LocalePicker locale={locale} onChange={selectLocale}/></section>;
+  if (missingKeys(strings).length) return <section className="registration-state"><p role="alert">Регистрация временно недоступна. Попробуйте позже.</p></section>;
+  const selectedOffer = content.offers?.[partnerType];
+  if (!selectedOffer?.version || !selectedOffer?.body || !selectedOffer?.sha256 || !content.privacyNotice?.sha256) return <section className="registration-state"><p role="alert">Регистрация временно недоступна. Тексты документов ещё не опубликованы.</p></section>;
   const label = key => strings[key];
   const canResubmit = Boolean(application);
   const brand = logoAssets[content.logoAssetKey];
@@ -197,7 +195,6 @@ export function PartnerRegistrationPage({ onBack }) {
     {application && <div className="registration-decision" role="status"><strong>{text(`registration.status.${application.status}`)}</strong>
       {application.latestDecisionReason && <p>{application.latestDecisionReason}</p>}
       <p>{text('registration.status.resubmitInfo')}</p></div>}
-    <LocalePicker locale={locale} onChange={selectLocale}/>
     {brand && <div className="registration-brand"><img src={brand.src} alt={brand.alt}/></div>}
     <div className="registration-layout">
       <section className="registration-card">
@@ -221,27 +218,19 @@ export function PartnerRegistrationPage({ onBack }) {
               <Field label={`${label('registration.fields.taxIdentifier')} *`}><input name="taxIdentifier" inputMode="numeric" required maxLength={64} aria-invalid={Boolean(fieldErrors.taxIdentifier)} aria-describedby={fieldErrors.taxIdentifier ? 'taxIdentifier-error' : undefined}/>{fieldErrors.taxIdentifier && <span id="taxIdentifier-error" className="field-error" role="alert">{label('registration.errors.taxIdentifier')}</span>}</Field>
             </>}
           </div>
-          <h2 className="registration-section-title">{content.offerTitle}</h2>
-          <label className="consent"><input name="offerAccepted" type="checkbox" required/><span>{label('registration.consent.offer')}</span></label>
-          <label className="consent"><input name="privacyAccepted" type="checkbox" required/><span>{label('registration.consent.privacy')}</span></label>
+          <h2 className="registration-section-title">{selectedOffer.title}</h2>
+          <label className="consent"><input key={`${partnerType}:${selectedOffer.sha256}`} name="offerAccepted" type="checkbox" required/><span>{label('registration.consent.offer')}</span></label>
+          <label className="consent"><input key={content.privacyNotice.sha256} name="privacyAccepted" type="checkbox" required/><span>{label('registration.consent.privacy')}</span></label>
           <button className="primary registration-submit" type="submit" disabled={submitting}>{submitting ? label('registration.actions.submitProgress') : canResubmit ? label('registration.actions.resubmit') : label('registration.actions.submit')}</button>
           <p className="form-note">{label('registration.status.manualReview')} · {label('registration.documents.revision')}: {content.contentVersion}.</p>
         </form>
       </section>
       <section className="offer-card" id="offer">
-        <div className="offer-heading"><div><span className="eyebrow">{content.offerVersion}</span><h2>{content.offerTitle}</h2></div><span className="badge">{label('registration.documents.published')}</span></div>
-        <article className="offer-content">{content.offerBody}</article>
-        <div className="offer-heading privacy-heading"><div><span className="eyebrow">{content.privacyNoticeVersion}</span><h2>{content.privacyNoticeTitle}</h2></div></div>
-        <article className="offer-content">{content.privacyNoticeBody}</article>
+        <div className="offer-heading"><div><span className="eyebrow">{selectedOffer.version}</span><h2>{selectedOffer.title}</h2></div><span className="badge">{label('registration.documents.published')}</span></div>
+        <article className="offer-content">{selectedOffer.body}</article>
+        <div className="offer-heading privacy-heading"><div><span className="eyebrow">{content.privacyNotice.version}</span><h2>{content.privacyNotice.title}</h2></div></div>
+        <article className="offer-content">{content.privacyNotice.body}</article>
       </section>
     </div>
   </>;
-}
-
-function LocalePicker({ locale, onChange }) {
-  const labels = readCachedStrings(locale);
-  return <div className="registration-locale-picker" role="group" aria-label={labels?.['registration.locale.label'] ?? ''}>
-    {registrationLocales.map(value => <button key={value} type="button" className={locale === value ? 'selected' : ''}
-      aria-pressed={locale === value} onClick={() => onChange(value)}>{value}</button>)}
-  </div>;
 }

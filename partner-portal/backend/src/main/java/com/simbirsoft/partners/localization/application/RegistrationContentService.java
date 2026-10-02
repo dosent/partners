@@ -7,6 +7,8 @@ import com.simbirsoft.partners.localization.application.RegistrationContentStore
 import com.simbirsoft.partners.localization.application.RegistrationContentStore.PublishedState;
 import com.simbirsoft.partners.localization.domain.RegistrationContentDraft;
 import com.simbirsoft.partners.localization.domain.RegistrationLocale;
+import com.simbirsoft.partners.localization.domain.OfferDocument;
+import com.simbirsoft.partners.localization.domain.OfferType;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.EnumMap;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -57,7 +60,6 @@ public class RegistrationContentService implements PublishedRegistrationContentL
             "registration.errors.sessionExpired",
             "registration.errors.generic",
             "registration.errors.taxIdentifier",
-            "registration.locale.label",
             "registration.status.PENDING_REVIEW",
             "registration.status.MANUAL_REVIEW",
             "registration.status.CHANGES_REQUESTED",
@@ -100,7 +102,8 @@ public class RegistrationContentService implements PublishedRegistrationContentL
     @Transactional(readOnly = true)
     public Optional<PublishedRegistrationContent> findPublished(String locale) {
         RegistrationLocale requested = RegistrationLocale.publicOrDefault(locale);
-        return store.findCurrentPublication(requested).map(this::toLookup);
+        return store.findCurrentPublication(requested)
+                .map(this::toLookup);
     }
 
     @Transactional(readOnly = true)
@@ -162,9 +165,12 @@ public class RegistrationContentService implements PublishedRegistrationContentL
         for (String key : REQUIRED_STRING_KEYS) {
             if (content.strings().get(key) == null || content.strings().get(key).isBlank()) missing.add(key);
         }
-        requireText(content.offerVersion(), "offerVersion", missing);
-        requireText(content.offerTitle(), "offerTitle", missing);
-        requireText(content.offerBody(), "offerBody", missing);
+        for (OfferType type : OfferType.values()) {
+            OfferDocument offer = content.offers().get(type);
+            requireText(offer == null ? null : offer.version(), "offers." + type + ".version", missing);
+            requireText(offer == null ? null : offer.title(), "offers." + type + ".title", missing);
+            requireText(offer == null ? null : offer.body(), "offers." + type + ".body", missing);
+        }
         requireText(content.privacyNoticeVersion(), "privacyNoticeVersion", missing);
         requireText(content.privacyNoticeTitle(), "privacyNoticeTitle", missing);
         requireText(content.privacyNoticeBody(), "privacyNoticeBody", missing);
@@ -182,23 +188,45 @@ public class RegistrationContentService implements PublishedRegistrationContentL
 
     private String checksum(RegistrationLocale locale, int version, RegistrationContentDraft content) {
         CanonicalContent canonical = new CanonicalContent(locale.value(), version,
-                new TreeMap<>(content.strings()), content.offerVersion(), content.offerTitle(), content.offerBody(),
+                new TreeMap<>(content.strings()), new TreeMap<>(content.offers()),
                 content.privacyNoticeVersion(), content.privacyNoticeTitle(), content.privacyNoticeBody(),
                 content.logoAssetKey());
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(objectMapper.writeValueAsString(canonical).getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException | JsonProcessingException exception) {
+            return sha256(objectMapper.writeValueAsString(canonical));
+        } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Unable to calculate registration content checksum", exception);
+        }
+    }
+
+    private String documentChecksum(String version, String title, String body) {
+        try {
+            return sha256(objectMapper.writeValueAsString(new OfferDocument(version, title, body)));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Unable to calculate document checksum", exception);
+        }
+    }
+
+    private static String sha256(String canonicalText) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonicalText.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 unavailable", exception);
         }
     }
 
     private PublishedRegistrationContent toLookup(PublishedState published) {
         RegistrationContentDraft content = published.content();
+        Map<OfferType, PublishedDocument> offers = new EnumMap<>(OfferType.class);
+        content.offers().forEach((type, offer) -> offers.put(type,
+                new PublishedDocument(offer.version(), offer.title(), offer.body(),
+                        documentChecksum(offer.version(), offer.title(), offer.body()))));
         return new PublishedRegistrationContent(published.locale().value(), published.contentVersion(),
-                content.strings(), content.offerVersion(), content.offerTitle(), content.offerBody(),
-                content.privacyNoticeVersion(), content.privacyNoticeTitle(), content.privacyNoticeBody(),
+                content.strings(), offers,
+                new PublishedDocument(content.privacyNoticeVersion(), content.privacyNoticeTitle(),
+                        content.privacyNoticeBody(), documentChecksum(content.privacyNoticeVersion(),
+                        content.privacyNoticeTitle(), content.privacyNoticeBody())),
                 content.logoAssetKey(), published.checksum(), published.publishedAt());
     }
 
@@ -209,7 +237,7 @@ public class RegistrationContentService implements PublishedRegistrationContentL
     public record DraftCommand(long expectedDraftVersion, RegistrationContentDraft content) { }
     public record AdminState(String locale, DraftState draft, PublishedState published) { }
     private record CanonicalContent(String locale, int contentVersion, Map<String, String> strings,
-            String offerVersion, String offerTitle, String offerBody,
+            Map<OfferType, OfferDocument> offers,
             String privacyNoticeVersion, String privacyNoticeTitle, String privacyNoticeBody,
             String logoAssetKey) { }
 
