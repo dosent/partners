@@ -69,13 +69,89 @@ const labels = {
   'portal.section.documents': 'Раздел кабинета: документы', 'portal.welcome': 'Пустое состояние обзора',
   'portal.emptySection': 'Пустое состояние раздела',
 };
+const defaultStrings = {
+  'registration.title': 'Регистрация партнёра',
+  'registration.types.individual': 'Физическое лицо',
+  'registration.types.legalEntity': 'Юридическое лицо',
+  'registration.types.soleProprietor': 'Индивидуальный предприниматель',
+  'registration.fields.fullName': 'Фамилия, имя и отчество',
+  'registration.fields.email': 'Электронная почта',
+  'registration.fields.phone': 'Телефон',
+  'registration.fields.country': 'Страна',
+  'registration.fields.region': 'Регион',
+  'registration.fields.companyName': 'Наименование организации',
+  'registration.fields.taxIdentifier': 'ИНН / БИН',
+  'registration.consent.offer': 'Я принимаю условия партнёрской оферты',
+  'registration.consent.privacy': 'Я согласен на обработку персональных данных',
+  'registration.actions.submit': 'Отправить заявку',
+  'registration.countries.RU': 'Россия',
+  'registration.countries.KZ': 'Казахстан',
+  'registration.status.manualReview': 'Заявка будет рассмотрена вручную',
+  'registration.ui.loading': 'Загружаем форму регистрации…',
+  'registration.auth.title': 'Войдите через Яндекс ID',
+  'registration.auth.info': 'Для подачи заявки войдите через Яндекс ID. Форма станет доступна после загрузки опубликованных документов.',
+  'registration.auth.action': 'Войти через Яндекс ID',
+  'registration.auth.back': 'Вернуться на страницу партнёрской программы',
+  'registration.errors.conflict': 'Документы обновились. Проверьте актуальную редакцию и подтвердите согласия ещё раз.',
+  'registration.errors.unavailable': 'Регистрация временно недоступна. Попробуйте позже.',
+  'registration.errors.sessionExpired': 'Сессия входа завершилась. Войдите через Яндекс ID ещё раз.',
+  'registration.errors.generic': 'Не удалось загрузить форму. Попробуйте ещё раз.',
+  'registration.errors.taxIdentifier': 'Проверьте ИНН / БИН.',
+  'registration.status.PENDING_REVIEW': 'Заявка ожидает проверки',
+  'registration.status.MANUAL_REVIEW': 'Заявка на ручной проверке',
+  'registration.status.CHANGES_REQUESTED': 'Требуются изменения в заявке',
+  'registration.status.REJECTED': 'Заявка отклонена',
+  'registration.status.APPROVED': 'Заявка одобрена',
+  'registration.status.approvedInfo': 'Заявка одобрена. Доступ в кабинет партнёра открыт.',
+  'registration.status.pendingInfo': 'Заявка отправлена и ожидает проверки.',
+  'registration.status.resubmitInfo': 'Обновите данные заявки и отправьте её повторно.',
+  'registration.actions.resubmit': 'Отправить повторно',
+  'registration.actions.retry': 'Повторить',
+  'registration.actions.refresh': 'Обновить статус',
+  'registration.actions.submitProgress': 'Отправляем заявку…',
+  'registration.documents.published': 'Опубликовано',
+  'registration.documents.revision': 'Редакция',
+  'portal.title': 'Кабинет партнёра',
+  'portal.status.approved': 'Доступ одобрен',
+  'portal.section.overview': 'Обзор',
+  'portal.section.leads': 'Лиды',
+  'portal.section.vacancies': 'Заявки на специалистов',
+  'portal.section.finance': 'Финансы',
+  'portal.section.documents': 'Документы',
+  'portal.welcome': 'Добро пожаловать в партнёрский портал SimbirSoft.',
+  'portal.emptySection': 'В этом разделе пока нет данных.',
+};
+const defaultOffers = {
+  INDIVIDUAL: { version: '1.0', title: 'Партнёрская оферта для физического лица' },
+  SOLE_PROPRIETOR: { version: '1.0', title: 'Партнёрская оферта для индивидуального предпринимателя' },
+  LEGAL_ENTITY: { version: '1.0', title: 'Партнёрская оферта для юридического лица' },
+};
+const defaultMetadata = { privacyNoticeVersion: '1.0', privacyNoticeTitle: 'Согласие на обработку персональных данных', logoAssetKey: 'simbirsoft' };
 const emptyValue = () => ({ strings: Object.fromEntries(requiredKeys.map(key => [key, ''])), offers: Object.fromEntries(offerTypes.map(type => [type.id, emptyOffer()])), privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
+const useDefaultWhenEmpty = (value, fallback) => value == null || (typeof value === 'string' && !value.trim()) ? fallback : value;
+function normalizeDraft(value = {}) {
+  value ??= {};
+  const empty = emptyValue();
+  const strings = { ...empty.strings, ...(value.strings ?? {}) };
+  for (const [key, fallback] of Object.entries(defaultStrings)) strings[key] = useDefaultWhenEmpty(strings[key], fallback);
+
+  const offers = { ...empty.offers, ...(value.offers ?? {}) };
+  for (const [type, defaults] of Object.entries(defaultOffers)) {
+    const offer = { ...emptyOffer(), ...(offers[type] ?? {}) };
+    for (const [field, fallback] of Object.entries(defaults)) offer[field] = useDefaultWhenEmpty(offer[field], fallback);
+    offers[type] = offer;
+  }
+
+  const draft = { ...empty, ...value, strings, offers };
+  for (const [field, fallback] of Object.entries(defaultMetadata)) draft[field] = useDefaultWhenEmpty(draft[field], fallback);
+  return draft;
+}
 const unwrap = result => result?.data ?? result;
 
 export function RegistrationContentPage({ session, onBack, onLogout }) {
   const locale = registrationContentLocale;
   const [state, setState] = useState(null);
-  const [draft, setDraft] = useState(emptyValue);
+  const [draft, setDraft] = useState(() => normalizeDraft());
   const [mode, setMode] = useState('edit');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -94,7 +170,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
     try {
       const response = unwrap(await getRegistrationContentAdmin(target));
       setState(response);
-      setDraft({ ...emptyValue(), ...(response.draft ?? {}), strings: { ...emptyValue().strings, ...(response.draft?.strings ?? {}) }, offers: { ...emptyValue().offers, ...(response.draft?.offers ?? {}) } });
+      setDraft(normalizeDraft(response.draft));
       setMode('edit');
     } catch (requestError) {
       setState(null); setError(requestError.message);
@@ -109,17 +185,18 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
     event?.preventDefault();
     setBusy(true); setError(''); setNotice(''); setMissing([]);
     try {
+      const normalizedDraft = normalizeDraft(draft);
       const response = unwrap(await saveRegistrationContentDraft(locale, {
         expectedDraftVersion: state?.draftVersion ?? 0,
-        strings: draft.strings,
-        offers: draft.offers,
-        privacyNoticeVersion: draft.privacyNoticeVersion,
-        privacyNoticeTitle: draft.privacyNoticeTitle,
-        privacyNoticeBody: draft.privacyNoticeBody,
-        logoAssetKey: draft.logoAssetKey || null,
+        strings: normalizedDraft.strings,
+        offers: normalizedDraft.offers,
+        privacyNoticeVersion: normalizedDraft.privacyNoticeVersion,
+        privacyNoticeTitle: normalizedDraft.privacyNoticeTitle,
+        privacyNoticeBody: normalizedDraft.privacyNoticeBody,
+        logoAssetKey: normalizedDraft.logoAssetKey,
       }));
       setState(response);
-      setDraft({ ...emptyValue(), ...(response.draft ?? {}), strings: { ...emptyValue().strings, ...(response.draft?.strings ?? {}) }, offers: { ...emptyValue().offers, ...(response.draft?.offers ?? {}) } });
+      setDraft(normalizeDraft(response.draft));
       setNotice('Черновик сохранён.');
     } catch (requestError) {
       setError(requestError.status === 409 ? 'Черновик изменён другим администратором. Обновите данные перед сохранением.' : requestError.message);
@@ -160,7 +237,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
       const content = parsed.content ?? parsed;
       if (parsed.locale && parsed.locale !== locale) throw new Error(`Файл содержит локаль ${parsed.locale}, сейчас выбрана ${locale}.`);
       if (!content || typeof content !== 'object' || !content.strings || typeof content.strings !== 'object') throw new Error('В JSON не найден объект content.strings.');
-      setDraft({ ...emptyValue(), ...content, strings: { ...emptyValue().strings, ...content.strings }, offers: { ...emptyValue().offers, ...(content.offers ?? {}) } });
+      setDraft(normalizeDraft(content));
       setNotice('Данные загружены в форму. Сохраните черновик, чтобы применить изменения.');
       setMode('edit');
     } catch (parseError) { setError(parseError instanceof SyntaxError ? 'Не удалось прочитать JSON-файл.' : parseError.message); }
