@@ -19,7 +19,7 @@ function cookie(name) {
 
 async function csrfHeaders() {
   const payload = await decode(await fetch(`${API}/auth/csrf`, { credentials: 'include' }));
-  const token = payload.token ?? payload.csrfToken ?? cookie('XSRF-TOKEN');
+  const token = cookie('XSRF-TOKEN') ?? payload.token ?? payload.csrfToken;
   const headerName = payload.headerName ?? payload.header ?? 'X-XSRF-TOKEN';
   return token ? { [headerName]: token } : {};
 }
