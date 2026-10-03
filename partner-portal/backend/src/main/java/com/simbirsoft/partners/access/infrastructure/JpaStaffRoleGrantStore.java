@@ -44,6 +44,7 @@ public class JpaStaffRoleGrantStore implements StaffRoleGrantStore {
         Set<StaffRole> added = desired.isEmpty() ? EnumSet.noneOf(StaffRole.class) : EnumSet.copyOf(desired);
         added.removeAll(current);
         grants.deleteAllByUsername(username);
+        grants.flush();
         grants.saveAll(desired.stream().map(role -> new StaffRoleGrantRecord(username, role)).toList());
         audit.saveAll(java.util.stream.Stream.concat(
                 added.stream().map(role -> new StaffRoleAuditRecord(username, role.name(), actor,
