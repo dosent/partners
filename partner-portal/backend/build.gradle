@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.bundling.BootJar
+
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.16'
@@ -36,6 +38,49 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+sourceSets {
+    e2e {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+dependencies {
+    testImplementation sourceSets.e2e.output
+}
+
+configurations {
+    e2eImplementation.extendsFrom implementation
+    e2eRuntimeOnly.extendsFrom runtimeOnly
+}
+
+tasks.register('bootJarE2e', BootJar) {
+    group = 'build'
+    description = 'Builds a backend artifact containing the e2e-only adapters.'
+    archiveClassifier = 'e2e'
+    mainClass = 'com.simbirsoft.partners.PartnerPortalApplication'
+    targetJavaVersion = JavaVersion.VERSION_21
+    classpath = sourceSets.e2e.runtimeClasspath
+    dependsOn tasks.named('e2eClasses')
+}
+
+tasks.register('verifyE2eArtifactIsolation') {
+    group = 'verification'
+    description = 'Checks that e2e adapters appear only in the dedicated backend artifact.'
+    dependsOn tasks.named('bootJar'), tasks.named('bootJarE2e')
+    doLast {
+        def entry = 'BOOT-INF/classes/com/simbirsoft/partners/e2e/E2eAuthenticationConfiguration.class'
+        def productionJar = tasks.named('bootJar').get().archiveFile.get().asFile
+        def e2eJar = tasks.named('bootJarE2e').get().archiveFile.get().asFile
+        if (zipTree(productionJar).matching { include entry }.files) {
+            throw new GradleException("Production bootJar contains e2e authentication: ${productionJar}")
+        }
+        if (!zipTree(e2eJar).matching { include entry }.files) {
+            throw new GradleException("E2e bootJar lacks e2e authentication: ${e2eJar}")
+        }
+    }
 }
 
 tasks.withType(Test).configureEach {

@@ -1,0 +1,36 @@
+stages:
+  - test
+
+partner-portal-e2e:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.61.1-noble
+  services:
+    - name: docker:27.5.1-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+    E2E_BASE_URL: http://docker:18088
+    PLAYWRIGHT_REPORT_DIR: playwright-report
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH'
+  before_script:
+    - apt-get update
+    - DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends docker.io docker-compose-v2
+    - docker info
+    - cd partner-portal
+    - npm ci
+  script:
+    - npm run verify:e2e-ci
+    - npm run test:e2e
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - partner-portal/playwright-report/
+      - partner-portal/playwright-report/e2e-services.log
+      - partner-portal/test-results/

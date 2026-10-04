@@ -1,0 +1,15 @@
+partners:
+  auth:
+    ldap:
+      enabled: false
+    yandex:
+      enabled: true
+      client-id: e2e-client-id
+      client-secret: e2e-client-secret
+      redirect-uri: http://localhost:18088/api/v1/auth/yandex/callback
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

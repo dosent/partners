@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build && node scripts/prepare-sites-build.mjs",
     "preview": "vite preview",
-    "test:sites": "node --test tests/sites-worker.test.mjs"
+    "test:sites": "node --test tests/sites-worker.test.mjs",
+    "test:e2e": "playwright test",
+    "verify:e2e-ci": "node scripts/verify-e2e-ci.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -15,5 +17,9 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "vite": "6.4.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "yaml": "^2.9.1"
   }
 }

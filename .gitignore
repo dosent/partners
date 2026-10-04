@@ -28,3 +28,6 @@ output/
 # Артефакты Gradle и JVM-сборки
 **/.gradle/
 **/build/
+
+partner-portal/playwright-report/
+partner-portal/test-results/

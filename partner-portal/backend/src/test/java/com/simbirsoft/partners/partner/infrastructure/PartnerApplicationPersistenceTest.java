@@ -86,9 +86,13 @@ class PartnerApplicationPersistenceTest {
         entityManager.detach(original);
         PartnerApplicationRecord firstCopy = store.findById(original.getId()).orElseThrow();
         firstCopy.getStatusHistory().size();
+        firstCopy.getRevisions().size();
+        firstCopy.getRevisions().forEach(revision -> revision.getConsents().size());
         entityManager.detach(firstCopy);
         PartnerApplicationRecord staleCopy = store.findById(original.getId()).orElseThrow();
         staleCopy.getStatusHistory().size();
+        staleCopy.getRevisions().size();
+        staleCopy.getRevisions().forEach(revision -> revision.getConsents().size());
         entityManager.detach(staleCopy);
 
         firstCopy.updateFrom(firstCopy.toDomain(protector)
@@ -146,7 +150,7 @@ class PartnerApplicationPersistenceTest {
 
     private static PartnerRegistrationData registrationData() {
         return new PartnerRegistrationData(PartnerType.LEGAL_ENTITY, "Иван Иванов", "ivan@example.test",
-                "+70000000000", "RU", "Самарская область", "ООО Пример", "1234567890");
+                "+70000000000", "RU", "Самарская область", "ООО Пример", "1000000002");
     }
 
     private static LegalConsent consent() {

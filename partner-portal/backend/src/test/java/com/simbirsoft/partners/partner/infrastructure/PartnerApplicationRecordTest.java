@@ -41,7 +41,7 @@ class PartnerApplicationRecordTest {
 
     private static PartnerRegistrationData registrationData() {
         return new PartnerRegistrationData(PartnerType.LEGAL_ENTITY, "Иван Иванов", "ivan@example.test",
-                "+70000000000", "RU", "Самарская область", "ООО Пример", "1234567890");
+                "+70000000000", "RU", "Самарская область", "ООО Пример", "1000000002");
     }
 
     private static LegalConsent consent() {
