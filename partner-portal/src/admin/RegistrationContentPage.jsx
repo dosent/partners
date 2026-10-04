@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowClockwise, ArrowDown, ArrowUp, FloppyDisk, Globe, UploadSimple } from '@phosphor-icons/react';
 import { getRegistrationContentAdmin, publishRegistrationContent, saveRegistrationContentDraft } from '../api/registrationContentAdminApi';
+import { partnerProfileContentDefaults } from '../registration/partnerProfileContentDefaults.js';
 import './RegistrationContentPage.css';
 
 const offerTypes = [
@@ -145,24 +146,7 @@ const defaultStrings = {
   'portal.section.documents': 'Документы',
   'portal.welcome': 'Добро пожаловать в партнёрский портал SimbirSoft.',
   'portal.emptySection': 'В этом разделе пока нет данных.',
-  'portal.profile.navigation': 'Профиль',
-  'portal.profile.title': 'Профиль',
-  'portal.profile.description': 'Контактные данные и настройки вашего аккаунта.',
-  'portal.profile.settings.title': 'Контактные данные и настройки',
-  'portal.profile.locale.label': 'Язык интерфейса',
-  'portal.profile.locale.RU': 'Русский',
-  'portal.profile.locale.KZ': 'Қазақша',
-  'portal.profile.locale.EN': 'English',
-  'portal.profile.notifications.title': 'Уведомления',
-  'portal.profile.notifications.email': 'По электронной почте',
-  'portal.profile.notifications.inApp': 'В кабинете',
-  'portal.profile.actions.save': 'Сохранить изменения',
-  'portal.profile.actions.saving': 'Сохранение…',
-  'portal.profile.status.saved': 'Изменения сохранены.',
-  'portal.profile.errors.save': 'Не удалось сохранить настройки. Попробуйте ещё раз.',
-  'portal.profile.loading': 'Загружаем профиль…',
-  'portal.profile.errors.load': 'Не удалось загрузить профиль. Попробуйте ещё раз.',
-  'portal.profile.errors.localeUnavailable': 'Для выбранного языка пока нет опубликованного содержимого.',
+  ...partnerProfileContentDefaults,
 };
 const defaultOffers = {
   INDIVIDUAL: { version: '1.0', title: 'Партнёрская оферта для физического лица' },
