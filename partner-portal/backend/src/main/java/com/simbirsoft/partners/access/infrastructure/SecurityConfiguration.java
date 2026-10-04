@@ -39,6 +39,7 @@ public class SecurityConfiguration {
                                 "/actuator/health/**", "/actuator/info")
                         .permitAll()
                         .requestMatchers("/api/v1/auth/yandex/session").hasRole("PARTNER")
+                        .requestMatchers("/api/v1/partners/**").hasRole("PARTNER")
                         .requestMatchers("/api/v1/auth/staff/session", "/api/v1/auth/staff/logout").hasRole("STAFF")
                         .requestMatchers(HttpMethod.POST, "/api/v1/partner-applications").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/partner-applications/me").hasRole("PARTNER")

@@ -6,6 +6,10 @@ import com.simbirsoft.partners.partner.domain.PartnerApplication;
 import com.simbirsoft.partners.partner.domain.PartnerApplicationStatus;
 import com.simbirsoft.partners.partner.domain.PartnerRegistrationData;
 import com.simbirsoft.partners.partner.domain.PartnerType;
+import com.simbirsoft.partners.partner.domain.PartnerApplicationRevision;
+import com.simbirsoft.partners.partner.domain.PartnerApplicationStatusEvent;
+import com.simbirsoft.partners.partner.application.PartnerProfileService;
+import com.simbirsoft.partners.access.application.PartnerPrincipal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -50,6 +54,9 @@ class PartnerApplicationPersistenceTest {
 
     @Autowired
     PartnerApplicationStore store;
+
+    @Autowired
+    PartnerProfileJpaRepository profileRepository;
 
     @Autowired
     TestEntityManager entityManager;
@@ -141,6 +148,92 @@ class PartnerApplicationPersistenceTest {
                 .containsExactly(1, 2);
         assertThat(restored.getStatusHistory()).hasSize(3);
         assertThat(restored.toDomain(protector).status()).isEqualTo(PartnerApplicationStatus.MANUAL_REVIEW);
+    }
+
+    @Test
+    void legacyApprovedApplicationGetsOwnerScopedProfileOnFirstRead() {
+        RegistrationDataProtector protector = new RegistrationDataProtector(
+                new ObjectMapper(), encryptionKey(), hashKey());
+        PartnerApplication approved = submittedApplication().decide(
+                PartnerApplicationStatus.APPROVED, "ivan.neshin", null, null, NOW.plusSeconds(30));
+        store.saveAndFlush(PartnerApplicationRecord.from(approved, protector));
+        entityManager.flush();
+        entityManager.clear();
+        var profileService = new PartnerProfileService(new JpaPartnerProfileStore(profileRepository),
+                new JpaApprovedPartnerProfileSource(store, protector));
+
+        var profile = profileService.current(new PartnerPrincipal("yandex", "subject-1"));
+
+        assertThat(profile.fullName()).isEqualTo("Иван Иванов");
+        assertThat(profile.email()).isEqualTo("ivan@example.test");
+        assertThat(profileRepository.findByIdentityProviderAndExternalSubject("yandex", "subject-1"))
+                .isPresent();
+        assertThat(profile).doesNotHaveToString("1000000002");
+    }
+
+    @Test
+    void approvedProfileKeepsApprovedRevisionWhileNewRevisionWaitsForReview() {
+        RegistrationDataProtector protector = new RegistrationDataProtector(
+                new ObjectMapper(), encryptionKey(), hashKey());
+        PartnerApplication approved = submittedApplication().decide(
+                PartnerApplicationStatus.APPROVED, "ivan.neshin", null, null, NOW.plusSeconds(30));
+        store.saveAndFlush(PartnerApplicationRecord.from(approved, protector));
+        var profiles = new JpaPartnerProfileStore(profileRepository);
+        var source = new JpaApprovedPartnerProfileSource(store, protector);
+        var profileService = new PartnerProfileService(profiles, source);
+        profileService.activate(approved);
+
+        var pendingRevisionData = new PartnerRegistrationData(PartnerType.LEGAL_ENTITY, "Новое имя",
+                "new@example.test", "+79990000000", "RU", "Москва", "ООО Новое", "7707083893");
+        var pendingRevision = PartnerApplication.restore(approved.id(), approved.identityProvider(),
+                approved.externalSubject(), PartnerApplicationStatus.MANUAL_REVIEW, null,
+                java.util.List.of(approved.revisions().getFirst(), new PartnerApplicationRevision(2,
+                        pendingRevisionData, consent(), NOW.plusSeconds(60))),
+                java.util.List.of(approved.statusHistory().getFirst(), approved.statusHistory().getLast(),
+                        new PartnerApplicationStatusEvent(PartnerApplicationStatus.MANUAL_REVIEW,
+                                "PARTNER", null, NOW.plusSeconds(60))));
+        PartnerApplicationRecord record = store.findById(approved.id()).orElseThrow();
+        record.updateFrom(pendingRevision, protector);
+        store.saveAndFlush(record);
+        entityManager.clear();
+
+        var profile = profileService.current(new PartnerPrincipal("yandex", "subject-1"));
+
+        assertThat(profile.fullName()).isEqualTo("Иван Иванов");
+        assertThat(profile.email()).isEqualTo("ivan@example.test");
+        assertThat(profile.companyName()).isEqualTo("ООО Пример");
+        assertThat(profile.approvedAt()).isEqualTo(NOW.plusSeconds(30));
+        assertThat(profileRepository.findByIdentityProviderAndExternalSubject("yandex", "subject-1"))
+                .get().extracting(PartnerProfileRecord::getApprovedRevisionNumber).isEqualTo(1);
+        assertThat(profile.toString()).doesNotContain("1000000002", "7707083893", "ООО Новое");
+    }
+
+    @Test
+    void legacyProfileRestoreUsesLatestApprovedRevisionNotPendingRevision() {
+        RegistrationDataProtector protector = new RegistrationDataProtector(
+                new ObjectMapper(), encryptionKey(), hashKey());
+        PartnerApplication approved = submittedApplication().decide(
+                PartnerApplicationStatus.APPROVED, "ivan.neshin", null, null, NOW.plusSeconds(30));
+        var pendingRevisionData = new PartnerRegistrationData(PartnerType.LEGAL_ENTITY, "Новое имя",
+                "new@example.test", "+79990000000", "RU", "Москва", "ООО Новое", "7707083893");
+        PartnerApplication pending = PartnerApplication.restore(approved.id(), approved.identityProvider(),
+                approved.externalSubject(), PartnerApplicationStatus.MANUAL_REVIEW, null,
+                java.util.List.of(approved.revisions().getFirst(), new PartnerApplicationRevision(2,
+                        pendingRevisionData, consent(), NOW.plusSeconds(60))),
+                java.util.List.of(approved.statusHistory().getFirst(), approved.statusHistory().getLast(),
+                        new PartnerApplicationStatusEvent(PartnerApplicationStatus.MANUAL_REVIEW,
+                                "PARTNER", null, NOW.plusSeconds(60))));
+        store.saveAndFlush(PartnerApplicationRecord.from(pending, protector));
+        var profileService = new PartnerProfileService(new JpaPartnerProfileStore(profileRepository),
+                new JpaApprovedPartnerProfileSource(store, protector));
+
+        var profile = profileService.current(new PartnerPrincipal("yandex", "subject-1"));
+
+        assertThat(profile.fullName()).isEqualTo("Иван Иванов");
+        assertThat(profile.companyName()).isEqualTo("ООО Пример");
+        assertThat(profile.approvedAt()).isEqualTo(NOW.plusSeconds(30));
+        assertThat(profileRepository.findByIdentityProviderAndExternalSubject("yandex", "subject-1"))
+                .get().extracting(PartnerProfileRecord::getApprovedRevisionNumber).isEqualTo(1);
     }
 
     private static PartnerApplication submittedApplication() {

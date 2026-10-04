@@ -1,0 +1,96 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-partner-profile
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: partner_profile
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: identity_provider
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: external_subject
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: application_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approved_revision_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approved_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: partner_profile
+            columnNames: identity_provider, external_subject
+            constraintName: uq_partner_profile_identity
+        - addUniqueConstraint:
+            tableName: partner_profile
+            columnNames: application_id
+            constraintName: uq_partner_profile_application
+        - addForeignKeyConstraint:
+            baseTableName: partner_profile
+            baseColumnNames: application_id
+            referencedTableName: partner_application
+            referencedColumnNames: id
+            constraintName: fk_partner_profile_application
+        - sql:
+            splitStatements: false
+            sql: >-
+              INSERT INTO partner_profile (
+                  id, identity_provider, external_subject, application_id,
+                  approved_revision_number, approved_at, created_at, updated_at, version
+              )
+              SELECT gen_random_uuid(), application.identity_provider, application.external_subject,
+                     application.id, revision.revision_number, decision.changed_at,
+                     decision.changed_at, decision.changed_at, 0
+              FROM partner_application application
+              JOIN LATERAL (
+                  SELECT changed_at
+                  FROM partner_application_status_history
+                  WHERE application_id = application.id AND status = 'APPROVED'
+                  ORDER BY event_number DESC
+                  LIMIT 1
+              ) decision ON TRUE
+              JOIN LATERAL (
+                  SELECT revision_number
+                  FROM partner_application_revision
+                  WHERE application_id = application.id
+                    AND submitted_at <= decision.changed_at
+                  ORDER BY revision_number DESC
+                  LIMIT 1
+              ) revision ON TRUE
+              ON CONFLICT (identity_provider, external_subject) DO NOTHING

@@ -36,6 +36,10 @@ export const getMyPartnerApplication = () => fetch(
   `${API}/partner-applications/me`, { credentials: 'include' },
 ).then(decode);
 
+export const getMyPartnerProfile = () => fetch(
+  `${API}/partners/me`, { credentials: 'include' },
+).then(decode);
+
 export async function submitPartnerApplication(payload, resubmit = false) {
   const headers = await csrfHeaders();
   return decode(await fetch(`${API}/partner-applications${resubmit ? '/me' : ''}`, {

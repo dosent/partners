@@ -1,5 +1,5 @@
 import { PartnerRegistrationPage } from './registration/PartnerRegistrationPage';
-import { getMyPartnerApplication, getPartnerSession, getRegistrationContent } from './api/partnerRegistrationApi';
+import { getMyPartnerApplication, getMyPartnerProfile, getPartnerSession, getRegistrationContent } from './api/partnerRegistrationApi';
 import { useEffect, useState } from 'react';
 import { House, Users, ClipboardText, Coins, FileText, User, CaretDown, CaretRight, Plus, MagnifyingGlass, DownloadSimple, Check, List, ShieldCheck, ArrowRight } from '@phosphor-icons/react';
 import { initialLeads, initialVacancies, candidatePool, payments, money, downloadFile } from './data';
@@ -56,15 +56,27 @@ function ApprovedPartnerPortal(){
  const [content,setContent]=useState(null);
  const [contentError,setContentError]=useState(false);
  const [retry,setRetry]=useState(0);
+ const [profile,setProfile]=useState(null);
+ const [profileLoading,setProfileLoading]=useState(false);
+ const [profileError,setProfileError]=useState(false);
+ const [profileMissing,setProfileMissing]=useState(false);
+ const [profileRetry,setProfileRetry]=useState(0);
  useEffect(()=>{let active=true;setContentError(false);getRegistrationContent('RU').then(value=>{if(active)setContent(value);}).catch(()=>{if(active)setContentError(true);});return()=>{active=false;};},[retry]);
+ useEffect(()=>{if(section!=='profile')return;let active=true;setProfileLoading(true);setProfileError(false);setProfileMissing(false);getMyPartnerProfile().then(value=>{if(active)setProfile(value);}).catch(error=>{if(active){if(error.status===404){setProfile(null);setProfileMissing(true);}else{setProfileError(true);}}}).finally(()=>{if(active)setProfileLoading(false);});return()=>{active=false;};},[section,profileRetry]);
  const strings=content?.strings??{};
  const text=key=>strings[key]||'';
- const sections=[['overview','portal.section.overview'],['leads','portal.section.leads'],['vacancies','portal.section.vacancies'],['finance','portal.section.finance'],['documents','portal.section.documents']];
+ const sections=[['overview','portal.section.overview'],['leads','portal.section.leads'],['vacancies','portal.section.vacancies'],['finance','portal.section.finance'],['documents','portal.section.documents'],['profile',null]];
  const activeKey=sections.find(([id])=>id===section)?.[1]??sections[0][1];
- if(contentError||content&&(sections.some(([,key])=>!text(key))||!text('portal.title')||!text('portal.status.approved')||!text('portal.emptySection')||!text('portal.welcome')))return <section className="registration-state" role="alert"><p>{content?.strings?.['registration.errors.generic']||'Не удалось загрузить личный кабинет.'}</p><button className="secondary" onClick={()=>{setContent(null);setRetry(value=>value+1);}}>{content?.strings?.['registration.actions.retry']||'Повторить'}</button></section>;
+ if(contentError||content&&(sections.some(([,key])=>key&&!text(key))||!text('portal.title')||!text('portal.status.approved')||!text('portal.emptySection')||!text('portal.welcome')))return <section className="registration-state" role="alert"><p>{content?.strings?.['registration.errors.generic']||'Не удалось загрузить личный кабинет.'}</p><button className="secondary" onClick={()=>{setContent(null);setRetry(value=>value+1);}}>{content?.strings?.['registration.actions.retry']||'Повторить'}</button></section>;
  if(!content)return <div className="registration-state" role="status" aria-busy="true"/>;
  const brand=content.logoAssetKey==='simbirsoft'?'/assets/logo.svg':content.logoAssetKey==='17soft'?'/assets/17soft.svg':null;
- return <div className="approved-portal"><header className="approved-portal-header">{brand&&<img src={brand} alt={content.logoAssetKey==='17soft'?'17Soft':'SimbirSoft'}/>}<strong>{text('portal.title')}</strong><span>{text('portal.status.approved')}</span></header><div className="approved-portal-layout"><nav aria-label={text('portal.title')}>{sections.map(([id,key])=><button key={id} className={section===id?'selected':''} onClick={()=>setSection(id)}>{text(key)}</button>)}</nav><main><p className="staff-eyebrow">{text('portal.status.approved')}</p><h1>{text(activeKey)}</h1><section className="approved-portal-empty"><p>{section==='overview'?text('portal.welcome'):text('portal.emptySection')}</p></section></main></div></div>;
+ const profileRows=profile?[['registration.fields.fullName',profile.fullName],['registration.fields.email',profile.email],['registration.fields.phone',profile.phone],['registration.fields.country',text(`registration.countries.${profile.countryCode}`)],['registration.fields.region',profile.region],...(profile.companyName?[['registration.fields.companyName',profile.companyName]]:[])]:[];
+ return <div className="approved-portal"><header className="approved-portal-header">{brand&&<img src={brand} alt={content.logoAssetKey==='17soft'?'17Soft':'SimbirSoft'}/>}<strong>{text('portal.title')}</strong><span>{text('portal.status.approved')}</span></header><div className="approved-portal-layout"><nav aria-label={text('portal.title')}>{sections.map(([id,key])=><button key={id} className={section===id?'selected':''} aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>{key?text(key):'Профиль'}</button>)}</nav><main><p className="staff-eyebrow">{text('portal.status.approved')}</p><h1>{section==='profile'?'Профиль':text(activeKey)}</h1>{section==='profile'?<section className="approved-portal-empty" aria-label="Профиль">
+   {profileLoading&&<p role="status" aria-busy="true">{text('registration.ui.loading')}</p>}
+   {profileError&&<div role="alert"><p>{text('registration.errors.generic')}</p><button className="secondary" onClick={()=>setProfileRetry(value=>value+1)}>{text('registration.actions.retry')}</button></div>}
+   {profileMissing&&!profileLoading&&!profileError&&<p role="status">{text('portal.emptySection')}</p>}
+   {profile&&!profileLoading&&!profileError&&<dl className="approved-portal-profile">{profileRows.map(([key,value])=><div key={key}><dt>{text(key)}</dt><dd>{value||'—'}</dd></div>)}</dl>}
+  </section>:<section className="approved-portal-empty"><p>{section==='overview'?text('portal.welcome'):text('portal.emptySection')}</p></section>}</main></div></div>;
 }
 
 function PartnerPortalEntry({landingRoute=false}){
