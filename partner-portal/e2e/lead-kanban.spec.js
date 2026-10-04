@@ -10,7 +10,7 @@ const api = {
 
 async function csrfHeaders(request) {
   const response = await request.get('/api/v1/auth/csrf');
-  expect(response.ok()).toBeTruthy();
+  expect(response.ok(), `CSRF endpoint returned HTTP ${response.status()}: ${await response.text()}`).toBeTruthy();
   const csrf = await response.json();
   return {
     [csrf.headerName ?? 'X-XSRF-TOKEN']: csrf.token,
@@ -111,6 +111,7 @@ test('approved partner creates and manages leads on the Kanban board safely', as
   const staffContext = await browser.newContext({ baseURL: E2E_BASE_URL });
   let approvedPartner;
   let unrelatedPartner;
+  let unassignedStaffContext;
   try {
     const staffPage = await staffContext.newPage();
     await loginAsStaff(staffPage, 'ivan.neshin');
@@ -232,6 +233,21 @@ test('approved partner creates and manages leads on the Kanban board safely', as
       });
     expect(invalidAttachment.status()).toBe(400);
 
+    // Staff without LEAD_MANAGE cannot alter a lead, even with a valid LDAP-style session.
+    unassignedStaffContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+    const unassignedStaffPage = await unassignedStaffContext.newPage();
+    const unassignedCsrfHeaders = await csrfHeaders(unassignedStaffContext.request);
+    const unassignedSession = await loginAsStaff(unassignedStaffPage, uniqueFixtureId());
+    expect(unassignedSession.accessState).toBe('ACCESS_PENDING');
+    const forbiddenStatusResponse = await unassignedStaffContext.request.post(
+      `/api/v1/admin/leads/${createdLead.id}/status`,
+      { data: { status: 'QUALIFICATION' }, headers: unassignedCsrfHeaders },
+    );
+    expect(forbiddenStatusResponse.status()).toBe(403);
+    expect(await forbiddenStatusResponse.text()).not.toContain(primaryLead.companyName);
+    await unassignedStaffContext.close();
+    unassignedStaffContext = undefined;
+
     // Staff with LEAD_MANAGE moves the lead; the partner sees both the lane and event history.
     const statusResponse = await staffContext.request.post(
       `/api/v1/admin/leads/${createdLead.id}/status`,
@@ -297,6 +313,7 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await expect(partnerPage.getByRole('button', { name: /^Открыть лид / })).toHaveCount(0);
     await expect(partnerPage.getByRole('button', { name: 'Повторить' })).toBeVisible();
   } finally {
+    if (unassignedStaffContext) await unassignedStaffContext.close().catch(() => {});
     if (approvedPartner) await approvedPartner.context.close().catch(() => {});
     if (unrelatedPartner) await unrelatedPartner.context.close().catch(() => {});
     await staffContext.close().catch(() => {});

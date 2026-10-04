@@ -1,11 +1,10 @@
 package com.simbirsoft.partners.lead.api;
 
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
+import com.simbirsoft.partners.lead.application.LeadAttachmentPort;
 import com.simbirsoft.partners.lead.application.LeadService;
 import com.simbirsoft.partners.lead.domain.LeadMessage;
 import com.simbirsoft.partners.lead.domain.LeadStatus;
-import com.simbirsoft.partners.document.application.LeadDocumentService;
-import com.simbirsoft.partners.document.domain.LeadAttachment;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,8 +36,8 @@ import org.springframework.http.ResponseEntity;
 @Tag(name="Partner leads",description="Собственные лиды партнёра")
 public class PartnerLeadController {
     private final LeadService service;
-    private final LeadDocumentService documents;
-    public PartnerLeadController(LeadService service, LeadDocumentService documents) { this.service=service; this.documents=documents; }
+    private final LeadAttachmentPort attachments;
+    public PartnerLeadController(LeadService service, LeadAttachmentPort attachments) { this.service=service; this.attachments=attachments; }
 
     @GetMapping("/board")
     @Operation(summary="Загрузить партнёрскую Kanban-доску")
@@ -68,10 +67,14 @@ public class PartnerLeadController {
             @Valid @RequestPart("request") CreateLeadRequest request,
             @RequestPart(value="attachment", required=false) MultipartFile attachment) {
         if (attachment == null || attachment.isEmpty()) return create(principal, request);
-        var prepared = documents.prepare(attachment.getOriginalFilename(), attachment.getContentType(), read(attachment));
-        var lead = service.create(principal, request.command(), saved -> documents.persist(
+        if (attachment.getSize() > LeadAttachmentPort.MAX_FILE_SIZE_BYTES) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Attachment must be a PDF or DOCX file up to 20 MB");
+        }
+        var prepared = attachments.prepare(attachment.getOriginalFilename(), attachment.getContentType(), read(attachment));
+        var lead = service.create(principal, request.command(), saved -> attachments.persist(
                 service.profileId(principal), saved.id(), prepared));
-        var files = documents.forLead(lead.id()).stream().map(this::attachmentResponse).toList();
+        var files = attachments.forLead(lead.id()).stream().map(this::attachmentResponse).toList();
         return LeadDetailResponse.from(lead, service.statusHistory(principal, lead.id()), service.messages(principal, lead.id()), files);
     }
 
@@ -79,7 +82,7 @@ public class PartnerLeadController {
     @Operation(summary="Получить детали собственного лида")
     public LeadDetailResponse detail(@AuthenticationPrincipal PartnerPrincipal principal,@PathVariable UUID leadId) {
         var lead=service.find(principal,leadId);
-        var files = documents.forLead(leadId).stream().map(this::attachmentResponse).toList();
+        var files = attachments.forLead(leadId).stream().map(this::attachmentResponse).toList();
         return LeadDetailResponse.from(lead,service.statusHistory(principal,leadId),service.messages(principal,leadId),files);
     }
 
@@ -89,10 +92,10 @@ public class PartnerLeadController {
             @PathVariable UUID leadId, @PathVariable UUID attachmentId) {
         UUID owner = service.profileId(principal);
         service.find(principal, leadId);
-        var file = documents.download(leadId, attachmentId, owner);
+        var file = attachments.download(leadId, attachmentId, owner);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.contentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.fileName()).build().toString())
-                .header("X-Content-Type-Options", "nosniff").body(file.bytes());
+                .header("X-Content-Type-Options", "nosniff").body(file.content());
     }
 
     @PostMapping("/{leadId}/messages")
@@ -102,8 +105,8 @@ public class PartnerLeadController {
         return LeadMessageResponse.from(service.sendMessage(principal,leadId,request.body()));
     }
 
-    private LeadDetailResponse.Attachment attachmentResponse(LeadAttachment file) {
-        return new LeadDetailResponse.Attachment(file.id(), file.fileName(), "CLEAN",
+    private LeadDetailResponse.Attachment attachmentResponse(LeadAttachmentPort.Attachment file) {
+        return new LeadDetailResponse.Attachment(file.id(), file.fileName(), file.scanStatus(),
                 "/api/v1/partner/leads/" + file.leadId() + "/attachments/" + file.id());
     }
     private static byte[] read(MultipartFile file) {
