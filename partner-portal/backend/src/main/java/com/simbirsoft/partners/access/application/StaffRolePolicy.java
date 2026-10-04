@@ -16,7 +16,7 @@ public final class StaffRolePolicy {
         map.put(StaffRole.FINANCE_CONTROLLER, EnumSet.of(StaffPermission.FINANCE_MANAGE));
         map.put(StaffRole.SYSTEM_ADMIN, EnumSet.of(StaffPermission.STAFF_ACCESS_MANAGE,
                 StaffPermission.PARTNER_APPLICATION_READ, StaffPermission.PARTNER_APPLICATION_DECIDE,
-                StaffPermission.LOCALIZATION_MANAGE, StaffPermission.DIRECTORY_MANAGE));
+                StaffPermission.LOCALIZATION_MANAGE, StaffPermission.DIRECTORY_MANAGE, StaffPermission.LEAD_MANAGE));
         MATRIX = Map.copyOf(map);
     }
     private StaffRolePolicy() {}

@@ -33,6 +33,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -45,6 +46,7 @@ import org.springframework.test.web.servlet.MvcResult;
         "partners.auth.ldap.group-search-filter=(&(objectClass=groupOfNames)(member={0}))",
         "partners.auth.ldap.role-groups.PARTNER_MANAGER=CN=Partner Managers,OU=Groups,DC=example,DC=com"
 })
+@ActiveProfiles("auth-test")
 @AutoConfigureMockMvc
 class StaffLdapLoginFlowTest {
     @Autowired private MockMvc mockMvc;

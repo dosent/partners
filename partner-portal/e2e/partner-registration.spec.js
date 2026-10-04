@@ -299,7 +299,7 @@ test('staff approval makes the partner portal available without demo data', asyn
     expect(await unrelatedUpdate.text()).not.toContain(changedEmail);
 
     await approvedPartnerPage.getByRole('button', { name: 'E2E KZ Leads' }).click();
-    await expect(approvedPartnerPage.getByText('E2E KZ No data')).toBeVisible();
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'Здесь появятся ваши лиды' })).toBeVisible();
     await expect(approvedPartnerPage.getByText('Демонстрационный аккаунт')).toHaveCount(0);
   } finally {
     await staffContext.close();

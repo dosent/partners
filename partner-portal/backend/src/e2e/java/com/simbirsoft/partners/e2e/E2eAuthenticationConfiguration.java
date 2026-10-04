@@ -7,6 +7,9 @@ import com.simbirsoft.partners.access.application.StaffAuthenticationFailedExcep
 import com.simbirsoft.partners.access.application.StaffAuthenticator;
 import com.simbirsoft.partners.access.application.StaffIdentity;
 import com.simbirsoft.partners.access.application.YandexIdentityProvider;
+import com.simbirsoft.partners.document.application.MalwareScanner;
+import com.simbirsoft.partners.document.application.ObjectStorage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,5 +45,28 @@ public class E2eAuthenticationConfiguration {
             }
             return new ExternalIdentity("YANDEX", code);
         };
+    }
+
+    @Bean
+    @Primary
+    ObjectStorage e2eObjectStorage() {
+        var objects = new ConcurrentHashMap<String, byte[]>();
+        return new ObjectStorage() {
+            @Override public void put(String key, byte[] content, String contentType) { objects.put(key, content.clone()); }
+            @Override public byte[] get(String key) {
+                byte[] content = objects.get(key);
+                if (content == null) throw new IllegalStateException("Stored attachment was not found");
+                return content.clone();
+            }
+            @Override public void delete(String key) { objects.remove(key); }
+        };
+    }
+
+    @Bean
+    @Primary
+    MalwareScanner e2eMalwareScanner() {
+        return content -> new String(content, java.nio.charset.StandardCharsets.ISO_8859_1)
+                .contains("EICAR-STANDARD-ANTIVIRUS-TEST-FILE")
+                        ? MalwareScanner.Result.INFECTED : MalwareScanner.Result.CLEAN;
     }
 }

@@ -29,6 +29,17 @@ class ModulePersistenceArchitectureTest {
     }
 
     @Test
+    void leadModuleUsesApplicationContractsInsteadOfDocumentDomainOrInfrastructure() {
+        var leadClasses = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("com.simbirsoft.partners.lead");
+
+        noClasses().that().resideInAPackage("..lead..")
+                .should().dependOnClassesThat().resideInAnyPackage("..document.domain..", "..document.infrastructure..")
+                .check(leadClasses);
+    }
+
+    @Test
     void accessApplicationDoesNotDependOnApiOrInfrastructureAdapters() {
         var productionClasses = new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())

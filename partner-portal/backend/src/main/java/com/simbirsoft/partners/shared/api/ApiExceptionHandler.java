@@ -21,6 +21,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -57,6 +58,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
     ResponseEntity<ApiError> missingRoute(HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Resource not found", List.of(), request);
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<ApiError> concurrentUpdate(HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION", "The record was changed by another request", List.of(), request);
     }
 
     @ExceptionHandler(ResponseStatusException.class)
