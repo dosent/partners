@@ -3,6 +3,7 @@ package com.simbirsoft.partners.partner.infrastructure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simbirsoft.partners.partner.domain.PartnerRegistrationData;
 import com.simbirsoft.partners.partner.domain.PartnerType;
+import com.simbirsoft.partners.partner.application.PartnerProfileContactsProtector.ProfileContacts;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -45,6 +46,21 @@ class RegistrationDataProtectorTest {
         assertThatIllegalStateException()
                 .isThrownBy(() -> protector.protect(legalEntity("1000000002")))
                 .withMessageContaining("not configured");
+    }
+
+    @Test
+    void encryptsEditableProfileContactsWithSeparateAuthenticatedContext() {
+        var protector = new RegistrationDataProtector(new ObjectMapper(), ENCRYPTION_KEY, HASH_KEY);
+        var contacts = new ProfileContacts("Иван Иванов", "ivan@example.test", "+79990000000");
+
+        byte[] encrypted = protector.protect(contacts);
+
+        assertThat(new String(encrypted, StandardCharsets.UTF_8))
+                .doesNotContain(contacts.fullName(), contacts.email(), contacts.phone());
+        assertThat(protector.reveal(encrypted)).isEqualTo(contacts);
+        byte[] tampered = encrypted.clone();
+        tampered[tampered.length - 1] ^= 1;
+        assertThatIllegalStateException().isThrownBy(() -> protector.reveal(tampered));
     }
 
     private static PartnerRegistrationData legalEntity(String taxIdentifier) {

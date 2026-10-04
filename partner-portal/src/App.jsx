@@ -1,5 +1,5 @@
 import { PartnerRegistrationPage } from './registration/PartnerRegistrationPage';
-import { getMyPartnerApplication, getMyPartnerProfile, getPartnerSession, getRegistrationContent } from './api/partnerRegistrationApi';
+import { getMyPartnerApplication, getMyPartnerProfile, getPartnerSession, getRegistrationContent, updateMyPartnerProfileSettings } from './api/partnerRegistrationApi';
 import { useEffect, useState } from 'react';
 import { House, Users, ClipboardText, Coins, FileText, User, CaretDown, CaretRight, Plus, MagnifyingGlass, DownloadSimple, Check, List, ShieldCheck, ArrowRight } from '@phosphor-icons/react';
 import { initialLeads, initialVacancies, candidatePool, payments, money, downloadFile } from './data';
@@ -55,27 +55,50 @@ function ApprovedPartnerPortal(){
  const [section,setSection]=useState('overview');
  const [content,setContent]=useState(null);
  const [contentError,setContentError]=useState(false);
+ const [contentFallback,setContentFallback]=useState(false);
  const [retry,setRetry]=useState(0);
  const [profile,setProfile]=useState(null);
  const [profileLoading,setProfileLoading]=useState(false);
  const [profileError,setProfileError]=useState(false);
  const [profileMissing,setProfileMissing]=useState(false);
  const [profileRetry,setProfileRetry]=useState(0);
- useEffect(()=>{let active=true;setContentError(false);getRegistrationContent('RU').then(value=>{if(active)setContent(value);}).catch(()=>{if(active)setContentError(true);});return()=>{active=false;};},[retry]);
- useEffect(()=>{if(section!=='profile')return;let active=true;setProfileLoading(true);setProfileError(false);setProfileMissing(false);getMyPartnerProfile().then(value=>{if(active)setProfile(value);}).catch(error=>{if(active){if(error.status===404){setProfile(null);setProfileMissing(true);}else{setProfileError(true);}}}).finally(()=>{if(active)setProfileLoading(false);});return()=>{active=false;};},[section,profileRetry]);
+ const [savingProfile,setSavingProfile]=useState(false);
+ const [profileSaved,setProfileSaved]=useState(false);
+ const [profileSaveError,setProfileSaveError]=useState(false);
+ useEffect(()=>{let active=true;const locale=profile?.locale||'RU';setContentError(false);setContentFallback(false);getRegistrationContent(locale).then(value=>{if(active){setContent(value);setContentFallback(false);}}).catch(async()=>{if(locale!=='RU'){try{const fallback=await getRegistrationContent('RU');if(active){setContent(fallback);setContentFallback(true);}return;}catch{}}if(active)setContentError(true);});return()=>{active=false;};},[retry,profile?.locale]);
+ useEffect(()=>{let active=true;setProfileLoading(true);setProfileError(false);setProfileMissing(false);getMyPartnerProfile().then(value=>{if(active)setProfile(value);}).catch(error=>{if(active){if(error.status===404){setProfile(null);setProfileMissing(true);}else{setProfileError(true);}}}).finally(()=>{if(active)setProfileLoading(false);});return()=>{active=false;};},[profileRetry]);
  const strings=content?.strings??{};
  const text=key=>strings[key]||'';
- const sections=[['overview','portal.section.overview'],['leads','portal.section.leads'],['vacancies','portal.section.vacancies'],['finance','portal.section.finance'],['documents','portal.section.documents'],['profile',null]];
+ const sections=[['overview','portal.section.overview'],['leads','portal.section.leads'],['vacancies','portal.section.vacancies'],['finance','portal.section.finance'],['documents','portal.section.documents'],['profile','portal.profile.navigation']];
  const activeKey=sections.find(([id])=>id===section)?.[1]??sections[0][1];
- if(contentError||content&&(sections.some(([,key])=>key&&!text(key))||!text('portal.title')||!text('portal.status.approved')||!text('portal.emptySection')||!text('portal.welcome')))return <section className="registration-state" role="alert"><p>{content?.strings?.['registration.errors.generic']||'Не удалось загрузить личный кабинет.'}</p><button className="secondary" onClick={()=>{setContent(null);setRetry(value=>value+1);}}>{content?.strings?.['registration.actions.retry']||'Повторить'}</button></section>;
- if(!content)return <div className="registration-state" role="status" aria-busy="true"/>;
- const brand=content.logoAssetKey==='simbirsoft'?'/assets/logo.svg':content.logoAssetKey==='17soft'?'/assets/17soft.svg':null;
+ const requestedLocale=profile?.locale||'RU';
+ const profileKeys=['portal.profile.navigation','portal.profile.title','portal.profile.description','portal.profile.settings.title','portal.profile.locale.label','portal.profile.locale.RU','portal.profile.locale.KZ','portal.profile.locale.EN','portal.profile.notifications.title','portal.profile.notifications.email','portal.profile.notifications.inApp','portal.profile.actions.save','portal.profile.actions.saving','portal.profile.status.saved','portal.profile.errors.save','portal.profile.loading','portal.profile.errors.load','portal.profile.errors.localeUnavailable'];
+ if(contentError&&content)return <section className="registration-state" role="alert"><p>{content.locale!==requestedLocale?text('portal.profile.errors.localeUnavailable'):text('registration.errors.generic')}</p><button className="secondary" onClick={()=>setRetry(value=>value+1)}>{text('registration.actions.retry')}</button></section>;
+ if(contentError&&!content)return <section className="registration-state" role="alert"><p>Не удалось загрузить опубликованные тексты интерфейса.</p><button className="secondary" onClick={()=>setRetry(value=>value+1)}>Повторить</button></section>;
+ if(content&&(sections.some(([,key])=>key&&!text(key))||!text('portal.title')||!text('portal.status.approved')||!text('portal.emptySection')||!text('portal.welcome')||profileKeys.some(key=>!text(key))))return <section className="registration-state" role="alert"><p>{text('registration.errors.generic')}</p><button className="secondary" onClick={()=>{setContent(null);setRetry(value=>value+1);}}>{text('registration.actions.retry')}</button></section>;
+ if(!content)return <div className="registration-state" role="status" aria-busy="true">Загружаем интерфейс…</div>;
+ const brand=profile?.locale==='KZ'?'/assets/17soft.svg':content.logoAssetKey==='simbirsoft'?'/assets/logo.svg':content.logoAssetKey==='17soft'?'/assets/17soft.svg':null;
+ const brandName=profile?.locale==='KZ'||content.logoAssetKey==='17soft'?'17Soft':'SimbirSoft';
  const profileRows=profile?[['registration.fields.fullName',profile.fullName],['registration.fields.email',profile.email],['registration.fields.phone',profile.phone],['registration.fields.country',text(`registration.countries.${profile.countryCode}`)],['registration.fields.region',profile.region],...(profile.companyName?[['registration.fields.companyName',profile.companyName]]:[])]:[];
- return <div className="approved-portal"><header className="approved-portal-header">{brand&&<img src={brand} alt={content.logoAssetKey==='17soft'?'17Soft':'SimbirSoft'}/>}<strong>{text('portal.title')}</strong><span>{text('portal.status.approved')}</span></header><div className="approved-portal-layout"><nav aria-label={text('portal.title')}>{sections.map(([id,key])=><button key={id} className={section===id?'selected':''} aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>{key?text(key):'Профиль'}</button>)}</nav><main><p className="staff-eyebrow">{text('portal.status.approved')}</p><h1>{section==='profile'?'Профиль':text(activeKey)}</h1>{section==='profile'?<section className="approved-portal-empty" aria-label="Профиль">
-   {profileLoading&&<p role="status" aria-busy="true">{text('registration.ui.loading')}</p>}
-   {profileError&&<div role="alert"><p>{text('registration.errors.generic')}</p><button className="secondary" onClick={()=>setProfileRetry(value=>value+1)}>{text('registration.actions.retry')}</button></div>}
+ return <div className="approved-portal">{contentFallback&&<section className="registration-state" role="alert"><p>{text('portal.profile.errors.localeUnavailable')}</p><button className="secondary" onClick={()=>setRetry(value=>value+1)}>{text('registration.actions.retry')}</button></section>}<header className="approved-portal-header">{brand&&<img src={brand} alt={brandName}/>}<strong>{text('portal.title')}</strong><span>{text('portal.status.approved')}</span></header><div className="approved-portal-layout"><nav aria-label={text('portal.title')}>{sections.map(([id,key])=><button key={id} className={section===id?'selected':''} aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>{text(key)}</button>)}</nav><main><p className="staff-eyebrow">{text('portal.status.approved')}</p><h1>{text(section==='profile'?'portal.profile.title':activeKey)}</h1>{section==='profile'&&<p className="page-description">{text('portal.profile.description')}</p>}{section==='profile'?<section className="approved-portal-empty" aria-label={text('portal.profile.title')}>
+   {profileLoading&&<p role="status" aria-busy="true">{text('portal.profile.loading')}</p>}
+   {profileError&&<div role="alert"><p>{text('portal.profile.errors.load')}</p><button className="secondary" onClick={()=>setProfileRetry(value=>value+1)}>{text('registration.actions.retry')}</button></div>}
    {profileMissing&&!profileLoading&&!profileError&&<p role="status">{text('portal.emptySection')}</p>}
-   {profile&&!profileLoading&&!profileError&&<dl className="approved-portal-profile">{profileRows.map(([key,value])=><div key={key}><dt>{text(key)}</dt><dd>{value||'—'}</dd></div>)}</dl>}
+   {profile&&!profileLoading&&!profileError&&<>
+    <dl className="approved-portal-profile">{profileRows.map(([key,value])=><div key={key}><dt>{text(key)}</dt><dd>{value||'—'}</dd></div>)}</dl>
+   <form className="approved-profile-settings" onSubmit={async event=>{event.preventDefault();setSavingProfile(true);setProfileSaved(false);setProfileSaveError(false);const fields=new FormData(event.currentTarget);const locale=String(fields.get('locale'));try{const localizedContent=locale!==profile.locale||contentFallback?await getRegistrationContent(locale):null;const saved=await updateMyPartnerProfileSettings({fullName:String(fields.get('fullName')),email:String(fields.get('email')),phone:String(fields.get('phone')),locale,emailNotificationsEnabled:fields.get('emailNotificationsEnabled')==='on',inAppNotificationsEnabled:fields.get('inAppNotificationsEnabled')==='on'});if(localizedContent){setContent(localizedContent);setContentFallback(false);}setProfile(saved);setProfileSaved(true);}catch(error){setProfileSaveError(error.status===503?'locale':'save');}finally{setSavingProfile(false);}}}>
+     <h2>{text('portal.profile.settings.title')}</h2>
+     <div className="approved-profile-edit-grid">
+      <label>{text('registration.fields.fullName')}<input name="fullName" required maxLength="200" defaultValue={profile.fullName}/></label>
+      <label>{text('registration.fields.email')}<input name="email" type="email" required maxLength="254" defaultValue={profile.email}/></label>
+      <label>{text('registration.fields.phone')}<input name="phone" type="tel" required maxLength="24" defaultValue={profile.phone}/></label>
+      <label>{text('portal.profile.locale.label')}<select name="locale" defaultValue={profile.locale}><option value="RU">{text('portal.profile.locale.RU')}</option><option value="KZ">{text('portal.profile.locale.KZ')}</option><option value="EN">{text('portal.profile.locale.EN')}</option></select></label>
+     </div>
+     <fieldset><legend>{text('portal.profile.notifications.title')}</legend><label><input name="emailNotificationsEnabled" type="checkbox" defaultChecked={profile.emailNotificationsEnabled}/> {text('portal.profile.notifications.email')}</label><label><input name="inAppNotificationsEnabled" type="checkbox" defaultChecked={profile.inAppNotificationsEnabled}/> {text('portal.profile.notifications.inApp')}</label></fieldset>
+     {profileSaved&&<p role="status">{text('portal.profile.status.saved')}</p>}{profileSaveError&&<p role="alert">{text(profileSaveError==='locale'?'portal.profile.errors.localeUnavailable':'portal.profile.errors.save')}</p>}
+     <button className="secondary" type="submit" disabled={savingProfile}>{savingProfile?text('portal.profile.actions.saving'):text('portal.profile.actions.save')}</button>
+    </form>
+   </>}
   </section>:<section className="approved-portal-empty"><p>{section==='overview'?text('portal.welcome'):text('portal.emptySection')}</p></section>}</main></div></div>;
 }
 

@@ -57,7 +57,7 @@ class JpaApprovedPartnerProfileSource implements ApprovedPartnerProfileSource {
                         com.simbirsoft.partners.partner.domain.PartnerApplicationRevision::revisionNumber));
         if (revision.isEmpty()) return Optional.empty();
         var profile = PartnerProfile.approved(application.identityProvider(), application.externalSubject(),
-                application.id(), revision.get().revisionNumber(), approvedAt);
+                application.id(), revision.get().revisionNumber(), approvedAt, revision.get().consent().locale());
         return Optional.of(new ApprovedProfile(profile, revision.get().registrationData()));
     }
 }

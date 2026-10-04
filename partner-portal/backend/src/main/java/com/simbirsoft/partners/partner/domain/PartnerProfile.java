@@ -7,7 +7,8 @@ import java.util.UUID;
 /** Активный профиль, созданный из одобренной редакции заявки. */
 public record PartnerProfile(UUID id, String identityProvider, String externalSubject,
         UUID applicationId, int approvedRevisionNumber, Instant approvedAt,
-        Instant createdAt, Instant updatedAt) {
+        Instant createdAt, Instant updatedAt, byte[] encryptedContactOverrides, String locale,
+        boolean emailNotificationsEnabled, boolean inAppNotificationsEnabled) {
     public PartnerProfile {
         Objects.requireNonNull(id, "id is required");
         requireText(identityProvider, "identityProvider");
@@ -17,12 +18,26 @@ public record PartnerProfile(UUID id, String identityProvider, String externalSu
         Objects.requireNonNull(approvedAt, "approvedAt is required");
         Objects.requireNonNull(createdAt, "createdAt is required");
         Objects.requireNonNull(updatedAt, "updatedAt is required");
+        if (locale == null || !java.util.Set.of("RU", "KZ", "EN").contains(locale)) {
+            throw new IllegalArgumentException("locale must be RU, KZ or EN");
+        }
+        encryptedContactOverrides = encryptedContactOverrides == null ? null : encryptedContactOverrides.clone();
+    }
+
+    @Override
+    public byte[] encryptedContactOverrides() {
+        return encryptedContactOverrides == null ? null : encryptedContactOverrides.clone();
     }
 
     public static PartnerProfile approved(String provider, String subject, UUID applicationId,
             int revisionNumber, Instant approvedAt) {
+        return approved(provider, subject, applicationId, revisionNumber, approvedAt, "RU");
+    }
+
+    public static PartnerProfile approved(String provider, String subject, UUID applicationId,
+            int revisionNumber, Instant approvedAt, String locale) {
         return new PartnerProfile(UUID.randomUUID(), provider, subject, applicationId, revisionNumber,
-                approvedAt, approvedAt, approvedAt);
+                approvedAt, approvedAt, approvedAt, null, locale, true, true);
     }
 
     public PartnerProfile refresh(String provider, String subject, UUID sourceApplicationId,
@@ -32,7 +47,15 @@ public record PartnerProfile(UUID id, String identityProvider, String externalSu
             throw new IllegalArgumentException("Profile ownership cannot be changed");
         }
         return new PartnerProfile(id, identityProvider, externalSubject, applicationId, revisionNumber,
-                decisionAt, createdAt, decisionAt);
+                decisionAt, createdAt, decisionAt, encryptedContactOverrides, locale,
+                emailNotificationsEnabled, inAppNotificationsEnabled);
+    }
+
+    public PartnerProfile withSettings(byte[] encryptedContacts, String updatedLocale, boolean emailNotifications,
+            boolean inAppNotifications, Instant changedAt) {
+        return new PartnerProfile(id, identityProvider, externalSubject, applicationId, approvedRevisionNumber,
+                approvedAt, createdAt, changedAt, encryptedContacts, updatedLocale, emailNotifications,
+                inAppNotifications);
     }
 
     private static void requireText(String value, String field) {

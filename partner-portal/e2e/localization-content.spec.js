@@ -10,7 +10,7 @@ test('admin saves a draft, publishes complete Russian content, and cannot publis
     await loginAsStaff(page, 'ivan.neshin');
     await page.getByRole('button', { name: 'Тексты регистрации' }).click();
     await expect(page).toHaveURL(/\/staff\/registration-content$/);
-    await expect(page.getByRole('heading', { name: 'Контент регистрации' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Контент регистрации и кабинета' })).toBeVisible();
 
     const title = `Регистрация партнёра ${marker}`;
     await page.getByLabel(/Заголовок регистрации/).fill(title);
@@ -61,6 +61,23 @@ test('admin saves a draft, publishes complete Russian content, and cannot publis
     const stillPublished = await page.context().request.get('/api/v1/public/registration-content/RU');
     expect(stillPublished.status(), 'previous publication remains public API status').toBe(200);
     expect(await stillPublished.json(), 'entire previous publication remains unchanged').toEqual(published);
+  } finally {
+    await page.context().close();
+  }
+});
+
+test('admin can edit each locale and unpublished translations block publication', async ({ page }) => {
+  try {
+    await loginAsStaff(page, 'ivan.neshin');
+    await page.getByRole('button', { name: 'Тексты регистрации' }).click();
+    await page.getByLabel('Локаль контента').selectOption('en');
+    const localizedField = page.getByLabel(/portal\.profile\.locale\.KZ/);
+    await expect(localizedField).toHaveValue('');
+    await localizedField.fill('');
+    await page.getByRole('button', { name: 'Сохранить черновик' }).click();
+    await expect(page.getByRole('status')).toContainText('Черновик сохранён');
+    await page.getByRole('button', { name: 'Опубликовать' }).click();
+    await expect(page.getByRole('alert')).toContainText('portal.profile.locale.KZ');
   } finally {
     await page.context().close();
   }

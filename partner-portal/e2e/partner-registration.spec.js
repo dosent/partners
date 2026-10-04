@@ -1,5 +1,5 @@
 import { expect, test, completePartnerOAuth, ensurePublishedTestContent, loginAsPartner, loginAsStaff } from './support/fixtures.js';
-import { isValidRussianInn, syntheticPartnerData } from './support/test-data.js';
+import { isValidRussianInn, registrationContentFixture, syntheticPartnerData } from './support/test-data.js';
 import { E2E_BASE_URL } from './support/base-url.js';
 
 async function requestJson(request, path) {
@@ -120,6 +120,8 @@ test('staff approval makes the partner portal available without demo data', asyn
   try {
     const previousIds = await manualReviewIds(staffContext.request);
     const partner = syntheticPartnerData();
+    await ensurePublishedTestContent(staffContext.request, 'EN');
+    await ensurePublishedTestContent(staffContext.request, 'KZ');
 
     await beginPartnerRegistration(page, partner);
     await submitIndividualApplication(page, partner);
@@ -137,7 +139,19 @@ test('staff approval makes the partner portal available without demo data', asyn
       baseURL: E2E_BASE_URL,
     });
     const approvedPartnerPage = await partnerContext.newPage();
+    let releaseProfileRequest;
+    const profileRequestGate = new Promise(resolve => { releaseProfileRequest = resolve; });
+    await approvedPartnerPage.route('**/api/v1/partners/me', async route => {
+      await profileRequestGate;
+      await route.continue();
+    });
     await loginAsPartner(approvedPartnerPage, partner.subject);
+    await approvedPartnerPage.getByRole('button', { name: 'E2E RU navigation' }).click();
+    await expect(approvedPartnerPage.getByText('E2E RU loading')).toBeVisible();
+    releaseProfileRequest();
+    await expect(approvedPartnerPage.getByText(partner.fullName)).toBeVisible();
+    await approvedPartnerPage.unroute('**/api/v1/partners/me');
+    await approvedPartnerPage.getByRole('button', { name: 'Обзор' }).click();
     await expect(approvedPartnerPage.getByRole('heading', { name: 'Обзор' })).toBeVisible();
     await expect(approvedPartnerPage.getByRole('navigation', { name: 'Партнёрский портал' })).toBeVisible();
     await expect(approvedPartnerPage.getByText('Добро пожаловать в партнёрский портал.')).toBeVisible();
@@ -157,15 +171,98 @@ test('staff approval makes the partner portal available without demo data', asyn
     expect(profile).not.toHaveProperty('taxIdentifier');
     expect(profile).not.toHaveProperty('inn');
 
-    await approvedPartnerPage.getByRole('button', { name: 'Профиль' }).click();
-    await expect(approvedPartnerPage.getByRole('heading', { name: 'Профиль' })).toBeVisible();
+    await approvedPartnerPage.getByRole('button', { name: 'E2E RU navigation' }).click();
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E RU title' })).toBeVisible();
     await expect(approvedPartnerPage.getByText(partner.fullName)).toBeVisible();
     await expect(approvedPartnerPage.getByText(partner.email)).toBeVisible();
+
+    const changedName = `Обновлённый партнёр ${partner.id.slice(-6)}`;
+    const changedEmail = `updated-${partner.email}`;
+    await approvedPartnerPage.getByLabel('ФИО', { exact: true }).fill(changedName);
+    await approvedPartnerPage.getByLabel('Электронная почта', { exact: true }).fill(changedEmail);
+    await approvedPartnerPage.getByLabel('Телефон', { exact: true }).fill('+79991112233');
+    await approvedPartnerPage.getByLabel('E2E RU locale.label').selectOption('EN');
+    await approvedPartnerPage.getByLabel('E2E RU notifications.email').uncheck();
+    await approvedPartnerPage.route('**/api/v1/partners/me/settings', async route => {
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+    });
+    await approvedPartnerPage.getByRole('button', { name: 'E2E RU actions.save' }).click();
+    await expect(approvedPartnerPage.getByRole('alert')).toContainText('E2E RU errors.save');
+    await approvedPartnerPage.unroute('**/api/v1/partners/me/settings');
+    await approvedPartnerPage.route('**/api/v1/partners/me/settings', async route => {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await route.continue();
+    });
+    await approvedPartnerPage.getByRole('button', { name: 'E2E RU actions.save' }).click();
+    await expect(approvedPartnerPage.getByRole('button', { name: 'E2E RU actions.saving' })).toBeVisible();
+    await approvedPartnerPage.unroute('**/api/v1/partners/me/settings');
+    await expect(approvedPartnerPage.getByRole('status')).toContainText('E2E EN status.saved');
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E EN title' })).toBeVisible();
+    await expect(approvedPartnerPage.getByRole('navigation', { name: 'E2E EN Partner Portal' }).getByRole('button', { name: 'E2E EN navigation' })).toBeVisible();
+    const enLocale = approvedPartnerPage.getByLabel('E2E EN locale.label');
+    await expect(enLocale).toHaveValue('EN');
+    await expect(enLocale.locator('option[value="RU"]')).toHaveText('E2E EN locale.RU');
+    await expect(enLocale.locator('option[value="KZ"]')).toHaveText('E2E EN locale.KZ');
+    await expect(enLocale.locator('option[value="EN"]')).toHaveText('E2E EN locale.EN');
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E EN settings.title' })).toBeVisible();
+    await expect(approvedPartnerPage.getByText('E2E EN description')).toBeVisible();
+    await expect(approvedPartnerPage.getByText('E2E EN notifications.title')).toBeVisible();
+    await expect(approvedPartnerPage.getByLabel('E2E EN Full name')).toBeVisible();
+    await expect(approvedPartnerPage.getByLabel('E2E EN notifications.email')).toBeVisible();
+    const savedProfileResponse = await partnerContext.request.get('/api/v1/partners/me');
+    expect(savedProfileResponse.status()).toBe(200);
+    expect(await savedProfileResponse.json()).toMatchObject({
+      fullName: changedName,
+      email: changedEmail,
+      phone: '+79991112233',
+      locale: 'EN',
+      emailNotificationsEnabled: false,
+      inAppNotificationsEnabled: true,
+    });
+    await approvedPartnerPage.getByLabel('E2E EN locale.label').selectOption('KZ');
+    await approvedPartnerPage.getByRole('button', { name: 'E2E EN actions.save' }).click();
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E KZ title' })).toBeVisible();
+    await expect(approvedPartnerPage.getByRole('navigation', { name: 'E2E KZ Partner Portal' }).getByRole('button', { name: 'E2E KZ navigation' })).toBeVisible();
+    await expect(approvedPartnerPage.getByLabel('E2E KZ locale.label')).toHaveValue('KZ');
+
+    let simulateMissingKzPublication = true;
+    await approvedPartnerPage.route('**/api/v1/public/registration-content/KZ', async route => {
+      if (simulateMissingKzPublication) {
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      await route.continue();
+    });
+    await approvedPartnerPage.reload();
+    await expect(approvedPartnerPage.getByRole('alert')).toContainText('E2E RU errors.localeUnavailable');
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'Обзор' })).toBeVisible();
+    expect((await (await partnerContext.request.get('/api/v1/partners/me')).json()).locale).toBe('KZ');
+    await approvedPartnerPage.getByRole('button', { name: 'E2E RU navigation' }).click();
+    let profileSettingsRequests = 0;
+    approvedPartnerPage.on('request', outbound => {
+      if (outbound.method() === 'PUT' && outbound.url().endsWith('/api/v1/partners/me/settings')) profileSettingsRequests += 1;
+    });
+    await approvedPartnerPage.getByRole('button', { name: 'E2E RU actions.save' }).click();
+    await expect(approvedPartnerPage.locator('.approved-profile-settings [role="alert"]')).toContainText('E2E RU errors.localeUnavailable');
+    expect(profileSettingsRequests).toBe(0);
+    expect((await (await partnerContext.request.get('/api/v1/partners/me')).json()).locale).toBe('KZ');
+    simulateMissingKzPublication = false;
+    await approvedPartnerPage.locator('.approved-portal > [role="alert"]').getByRole('button', { name: 'Повторить' }).click();
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E KZ title' })).toBeVisible();
+    await approvedPartnerPage.unroute('**/api/v1/public/registration-content/KZ');
 
     const anonymousContext = await page.context().browser().newContext({ baseURL: E2E_BASE_URL });
     try {
       const anonymousResponse = await anonymousContext.request.get('/api/v1/partners/me');
       expect(anonymousResponse.status()).toBe(401);
+      const anonymousCsrfResponse = await anonymousContext.request.get('/api/v1/auth/csrf');
+      const anonymousCsrf = await anonymousCsrfResponse.json();
+      const anonymousUpdate = await anonymousContext.request.put('/api/v1/partners/me/settings', {
+        data: { fullName: 'Неавторизован', email: 'x@example.test', phone: '+79990000000', locale: 'RU',
+          emailNotificationsEnabled: true, inAppNotificationsEnabled: true },
+        headers: { [anonymousCsrf.headerName ?? 'X-XSRF-TOKEN']: anonymousCsrf.token },
+      });
+      expect(anonymousUpdate.status()).toBe(401);
     } finally {
       await anonymousContext.close();
     }
@@ -176,14 +273,54 @@ test('staff approval makes the partner portal available without demo data', asyn
     const unrelatedProfileResponse = await unrelatedPartnerContext.request.get('/api/v1/partners/me');
     expect(unrelatedProfileResponse.status()).toBe(404);
     expect(await unrelatedProfileResponse.text()).not.toContain(partner.email);
+    const csrfResponse = await unrelatedPartnerContext.request.get('/api/v1/auth/csrf');
+    const csrf = await csrfResponse.json();
+    const unrelatedUpdate = await unrelatedPartnerContext.request.put('/api/v1/partners/me/settings', {
+      data: { fullName: 'Чужое изменение', email: 'other@example.test', phone: '+79991112233', locale: 'RU',
+        emailNotificationsEnabled: true, inAppNotificationsEnabled: true },
+      headers: { [csrf.headerName ?? 'X-XSRF-TOKEN']: csrf.token },
+    });
+    expect(unrelatedUpdate.status()).toBe(404);
+    expect(await unrelatedUpdate.text()).not.toContain(changedEmail);
 
-    await approvedPartnerPage.getByRole('button', { name: 'Мои лиды' }).click();
-    await expect(approvedPartnerPage.getByText('Здесь пока нет данных.')).toBeVisible();
+    await approvedPartnerPage.getByRole('button', { name: 'E2E KZ Leads' }).click();
+    await expect(approvedPartnerPage.getByText('E2E KZ No data')).toBeVisible();
     await expect(approvedPartnerPage.getByText('Демонстрационный аккаунт')).toHaveCount(0);
   } finally {
     await staffContext.close();
     if (partnerContext) await partnerContext.close();
     if (unrelatedPartnerContext) await unrelatedPartnerContext.close();
+  }
+});
+
+test('profile localization keys are mandatory before content publication', async ({ page }) => {
+  const context = await page.context().browser().newContext({ baseURL: E2E_BASE_URL });
+  try {
+    const csrfResponse = await context.request.get('/api/v1/auth/csrf');
+    const csrf = await csrfResponse.json();
+    const login = await context.request.post('/api/v1/auth/staff/login', {
+      data: { username: 'ivan.neshin', password: 'e2e-password' },
+      headers: { [csrf.headerName ?? 'X-XSRF-TOKEN']: csrf.token },
+    });
+    expect(login.ok()).toBeTruthy();
+    const stateResponse = await context.request.get('/api/v1/admin/registration-content/en');
+    const state = await stateResponse.json();
+    const fixture = registrationContentFixture('EN');
+    delete fixture.strings['portal.profile.locale.KZ'];
+    const draftResponse = await context.request.put('/api/v1/admin/registration-content/en/draft', {
+      data: { expectedDraftVersion: state.draftVersion ?? 0, ...fixture },
+      headers: { [csrf.headerName ?? 'X-XSRF-TOKEN']: csrf.token },
+    });
+    expect(draftResponse.ok()).toBeTruthy();
+    const draft = await draftResponse.json();
+    const publishResponse = await context.request.post('/api/v1/admin/registration-content/en/publish', {
+      data: { expectedDraftVersion: draft.draftVersion },
+      headers: { [csrf.headerName ?? 'X-XSRF-TOKEN']: csrf.token },
+    });
+    expect(publishResponse.status()).toBe(422);
+    expect(await publishResponse.text()).toContain('portal.profile.locale.KZ');
+  } finally {
+    await context.close();
   }
 });
 

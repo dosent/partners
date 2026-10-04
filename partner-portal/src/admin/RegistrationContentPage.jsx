@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowClockwise, ArrowDown, ArrowUp, FloppyDisk, Globe, UploadSimple } from '@phosphor-icons/react';
-import { getRegistrationContentAdmin, publishRegistrationContent, registrationContentLocale, saveRegistrationContentDraft } from '../api/registrationContentAdminApi';
+import { getRegistrationContentAdmin, publishRegistrationContent, saveRegistrationContentDraft } from '../api/registrationContentAdminApi';
 import './RegistrationContentPage.css';
 
 const offerTypes = [
@@ -26,6 +26,13 @@ const requiredKeys = [
   'portal.title', 'portal.status.approved', 'portal.section.overview', 'portal.section.leads',
   'portal.section.vacancies', 'portal.section.finance', 'portal.section.documents',
   'portal.welcome', 'portal.emptySection',
+  'portal.profile.navigation', 'portal.profile.title', 'portal.profile.description',
+  'portal.profile.settings.title', 'portal.profile.locale.label', 'portal.profile.locale.RU',
+  'portal.profile.locale.KZ', 'portal.profile.locale.EN', 'portal.profile.notifications.title',
+  'portal.profile.notifications.email', 'portal.profile.notifications.inApp',
+  'portal.profile.actions.save', 'portal.profile.actions.saving', 'portal.profile.status.saved',
+  'portal.profile.errors.save', 'portal.profile.loading', 'portal.profile.errors.load',
+  'portal.profile.errors.localeUnavailable',
 ];
 const labels = {
   'registration.title': 'Заголовок регистрации',
@@ -68,6 +75,24 @@ const labels = {
   'portal.section.vacancies': 'Раздел кабинета: заявки на специалистов', 'portal.section.finance': 'Раздел кабинета: финансы',
   'portal.section.documents': 'Раздел кабинета: документы', 'portal.welcome': 'Пустое состояние обзора',
   'portal.emptySection': 'Пустое состояние раздела',
+  'portal.profile.navigation': 'Пункт навигации: профиль',
+  'portal.profile.title': 'Заголовок страницы профиля',
+  'portal.profile.description': 'Описание страницы профиля',
+  'portal.profile.settings.title': 'Заголовок настроек профиля',
+  'portal.profile.locale.label': 'Поле: язык интерфейса',
+  'portal.profile.locale.RU': 'Название локали: русский',
+  'portal.profile.locale.KZ': 'Название локали: казахский',
+  'portal.profile.locale.EN': 'Название локали: английский',
+  'portal.profile.notifications.title': 'Заголовок настроек уведомлений',
+  'portal.profile.notifications.email': 'Настройка уведомлений по электронной почте',
+  'portal.profile.notifications.inApp': 'Настройка уведомлений в кабинете',
+  'portal.profile.actions.save': 'Кнопка сохранения настроек профиля',
+  'portal.profile.actions.saving': 'Подпись сохранения настроек в процессе',
+  'portal.profile.status.saved': 'Сообщение об успешном сохранении профиля',
+  'portal.profile.errors.save': 'Ошибка сохранения настроек профиля',
+  'portal.profile.loading': 'Загрузка профиля',
+  'portal.profile.errors.load': 'Ошибка загрузки профиля',
+  'portal.profile.errors.localeUnavailable': 'Сообщение: для выбранного языка нет опубликованного содержимого',
 };
 const defaultStrings = {
   'registration.title': 'Регистрация партнёра',
@@ -120,6 +145,24 @@ const defaultStrings = {
   'portal.section.documents': 'Документы',
   'portal.welcome': 'Добро пожаловать в партнёрский портал SimbirSoft.',
   'portal.emptySection': 'В этом разделе пока нет данных.',
+  'portal.profile.navigation': 'Профиль',
+  'portal.profile.title': 'Профиль',
+  'portal.profile.description': 'Контактные данные и настройки вашего аккаунта.',
+  'portal.profile.settings.title': 'Контактные данные и настройки',
+  'portal.profile.locale.label': 'Язык интерфейса',
+  'portal.profile.locale.RU': 'Русский',
+  'portal.profile.locale.KZ': 'Қазақша',
+  'portal.profile.locale.EN': 'English',
+  'portal.profile.notifications.title': 'Уведомления',
+  'portal.profile.notifications.email': 'По электронной почте',
+  'portal.profile.notifications.inApp': 'В кабинете',
+  'portal.profile.actions.save': 'Сохранить изменения',
+  'portal.profile.actions.saving': 'Сохранение…',
+  'portal.profile.status.saved': 'Изменения сохранены.',
+  'portal.profile.errors.save': 'Не удалось сохранить настройки. Попробуйте ещё раз.',
+  'portal.profile.loading': 'Загружаем профиль…',
+  'portal.profile.errors.load': 'Не удалось загрузить профиль. Попробуйте ещё раз.',
+  'portal.profile.errors.localeUnavailable': 'Для выбранного языка пока нет опубликованного содержимого.',
 };
 const defaultOffers = {
   INDIVIDUAL: { version: '1.0', title: 'Партнёрская оферта для физического лица' },
@@ -129,29 +172,33 @@ const defaultOffers = {
 const defaultMetadata = { privacyNoticeVersion: '1.0', privacyNoticeTitle: 'Согласие на обработку персональных данных', logoAssetKey: 'simbirsoft' };
 const emptyValue = () => ({ strings: Object.fromEntries(requiredKeys.map(key => [key, ''])), offers: Object.fromEntries(offerTypes.map(type => [type.id, emptyOffer()])), privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
 const useDefaultWhenEmpty = (value, fallback) => value == null || (typeof value === 'string' && !value.trim()) ? fallback : value;
-function normalizeDraft(value = {}) {
+function normalizeDraft(value = {}, locale = 'ru') {
   value ??= {};
   const empty = emptyValue();
   const strings = { ...empty.strings, ...(value.strings ?? {}) };
-  for (const [key, fallback] of Object.entries(defaultStrings)) strings[key] = useDefaultWhenEmpty(strings[key], fallback);
+  if (locale === 'ru') {
+    for (const [key, fallback] of Object.entries(defaultStrings)) strings[key] = useDefaultWhenEmpty(strings[key], fallback);
+  }
 
   const offers = { ...empty.offers, ...(value.offers ?? {}) };
-  for (const [type, defaults] of Object.entries(defaultOffers)) {
+  for (const [type, defaults] of Object.entries(locale === 'ru' ? defaultOffers : {})) {
     const offer = { ...emptyOffer(), ...(offers[type] ?? {}) };
     for (const [field, fallback] of Object.entries(defaults)) offer[field] = useDefaultWhenEmpty(offer[field], fallback);
     offers[type] = offer;
   }
 
   const draft = { ...empty, ...value, strings, offers };
-  for (const [field, fallback] of Object.entries(defaultMetadata)) draft[field] = useDefaultWhenEmpty(draft[field], fallback);
+  if (locale === 'ru') {
+    for (const [field, fallback] of Object.entries(defaultMetadata)) draft[field] = useDefaultWhenEmpty(draft[field], fallback);
+  }
   return draft;
 }
 const unwrap = result => result?.data ?? result;
 
 export function RegistrationContentPage({ session, onBack, onLogout }) {
-  const locale = registrationContentLocale;
+  const [locale, setLocale] = useState('ru');
   const [state, setState] = useState(null);
-  const [draft, setDraft] = useState(() => normalizeDraft());
+  const [draft, setDraft] = useState(() => normalizeDraft({}, 'ru'));
   const [mode, setMode] = useState('edit');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -159,7 +206,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
   const [missing, setMissing] = useState([]);
   const importRef = useRef(null);
   const canManage = (session?.permissions ?? []).includes('localization.manage');
-  const localeInfo = { id: 'ru', label: 'Русский', brand: 'SimbirSoft' };
+  const localeInfo = ({ ru: { id: 'ru', label: 'Русский', brand: 'SimbirSoft' }, kz: { id: 'kz', label: 'Қазақша', brand: '17Soft' }, en: { id: 'en', label: 'English', brand: 'SimbirSoft' } })[locale];
   const published = state?.published ?? null;
   const extraKeys = useMemo(() => Object.keys(draft.strings ?? {}).filter(key => !requiredKeys.includes(key)).sort(), [draft.strings]);
 
@@ -170,7 +217,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
     try {
       const response = unwrap(await getRegistrationContentAdmin(target));
       setState(response);
-      setDraft(normalizeDraft(response.draft));
+      setDraft(normalizeDraft(response.draft, target));
       setMode('edit');
     } catch (requestError) {
       setState(null); setError(requestError.message);
@@ -185,7 +232,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
     event?.preventDefault();
     setBusy(true); setError(''); setNotice(''); setMissing([]);
     try {
-      const normalizedDraft = normalizeDraft(draft);
+      const normalizedDraft = normalizeDraft(draft, locale);
       const response = unwrap(await saveRegistrationContentDraft(locale, {
         expectedDraftVersion: state?.draftVersion ?? 0,
         strings: normalizedDraft.strings,
@@ -193,10 +240,10 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
         privacyNoticeVersion: normalizedDraft.privacyNoticeVersion,
         privacyNoticeTitle: normalizedDraft.privacyNoticeTitle,
         privacyNoticeBody: normalizedDraft.privacyNoticeBody,
-        logoAssetKey: normalizedDraft.logoAssetKey,
+        logoAssetKey: normalizedDraft.logoAssetKey || null,
       }));
       setState(response);
-      setDraft(normalizeDraft(response.draft));
+      setDraft(normalizeDraft(response.draft, locale));
       setNotice('Черновик сохранён.');
     } catch (requestError) {
       setError(requestError.status === 409 ? 'Черновик изменён другим администратором. Обновите данные перед сохранением.' : requestError.message);
@@ -237,7 +284,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
       const content = parsed.content ?? parsed;
       if (parsed.locale && parsed.locale !== locale) throw new Error(`Файл содержит локаль ${parsed.locale}, сейчас выбрана ${locale}.`);
       if (!content || typeof content !== 'object' || !content.strings || typeof content.strings !== 'object') throw new Error('В JSON не найден объект content.strings.');
-      setDraft(normalizeDraft(content));
+      setDraft(normalizeDraft(content, locale));
       setNotice('Данные загружены в форму. Сохраните черновик, чтобы применить изменения.');
       setMode('edit');
     } catch (parseError) { setError(parseError instanceof SyntaxError ? 'Не удалось прочитать JSON-файл.' : parseError.message); }
@@ -246,8 +293,9 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
   if (!canManage) return <div className="registration-content-shell"><section className="registration-content-card"><p className="registration-content-kicker">Администрирование</p><h1>Недостаточно прав</h1><p>Для управления локализованным контентом требуется разрешение localization.manage.</p><button type="button" className="rc-button rc-button-secondary" onClick={onBack}>Вернуться в кабинет</button></section></div>;
 
   return <div className="registration-content-shell">
-    <header className="registration-content-header"><div><p className="registration-content-kicker">Настройки портала</p><h1>Контент регистрации</h1><p>Редактируйте русские подписи и тексты оферт для каждого типа заявителя.</p></div><div className="rc-header-actions"><button type="button" className="rc-button rc-button-secondary" onClick={onLogout}>Выйти</button></div></header>
+    <header className="registration-content-header"><div><p className="registration-content-kicker">Настройки портала</p><h1>Контент регистрации и кабинета</h1><p>Заполняйте и публикуйте содержимое отдельно для каждой локали.</p></div><div className="rc-header-actions"><button type="button" className="rc-button rc-button-secondary" onClick={onLogout}>Выйти</button></div></header>
     <div className="registration-content-toolbar">
+      <label className="rc-locale-selector">Локаль контента<select value={locale} onChange={event => setLocale(event.target.value)} disabled={busy}><option value="ru">Русский (RU)</option><option value="kz">Қазақша (KZ)</option><option value="en">English (EN)</option></select></label>
       <div className="rc-view-switch"><button type="button" className={mode === 'edit' ? 'is-active' : ''} onClick={() => setMode('edit')}>Черновик</button><button type="button" className={mode === 'published' ? 'is-active' : ''} onClick={() => setMode('published')} disabled={!published}>Опубликовано</button></div>
     </div>
     {error && <div className="rc-alert rc-alert-error" role="alert"><strong>{error}</strong>{missing.length > 0 && <ul>{missing.map(item => <li key={item}>{item}</li>)}</ul>}</div>}
