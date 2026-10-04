@@ -1,5 +1,5 @@
 import { PartnerRegistrationPage } from './registration/PartnerRegistrationPage';
-import { getMyPartnerApplication, getPartnerSession } from './api/partnerRegistrationApi';
+import { getMyPartnerApplication, getPartnerSession, getRegistrationContent } from './api/partnerRegistrationApi';
 import { useEffect, useState } from 'react';
 import { House, Users, ClipboardText, Coins, FileText, User, CaretDown, CaretRight, Plus, MagnifyingGlass, DownloadSimple, Check, List, ShieldCheck, ArrowRight } from '@phosphor-icons/react';
 import { initialLeads, initialVacancies, candidatePool, payments, money, downloadFile } from './data';
