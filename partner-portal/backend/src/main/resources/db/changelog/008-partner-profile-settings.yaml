@@ -1,0 +1,86 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-partner-profile-settings
+      author: partner-portal
+      changes:
+        - addColumn:
+            tableName: partner_profile
+            columns:
+              - column:
+                  name: encrypted_contact_overrides
+                  type: bytea
+              - column:
+                  name: locale
+                  type: varchar(2)
+                  defaultValue: RU
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email_notifications_enabled
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: in_app_notifications_enabled
+                  type: boolean
+                  defaultValueBoolean: true
+        - sql:
+            splitStatements: false
+            sql: >-
+              UPDATE partner_profile profile
+              SET locale = COALESCE((
+                  SELECT consent.locale
+                  FROM partner_application_revision revision
+                  JOIN partner_application_consent consent ON consent.revision_id = revision.id
+                  WHERE revision.application_id = profile.application_id
+                    AND revision.revision_number = profile.approved_revision_number
+                    AND consent.consent_type = 'PERSONAL_DATA_PROCESSING'
+                    AND revision.submitted_at <= profile.approved_at
+                  ORDER BY consent.accepted_at DESC
+                  LIMIT 1
+              ), profile.locale)
+        - createTable:
+            tableName: partner_profile_audit
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_partner_profile_audit_profile
+                    references: partner_profile(id)
+              - column:
+                  name: identity_provider
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: external_subject
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: changed_fields
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: partner_profile_audit
+            indexName: idx_partner_profile_audit_profile_occurred
+            columns:
+              - column:
+                  name: profile_id
+              - column:
+                  name: occurred_at

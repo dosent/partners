@@ -186,3 +186,6 @@ databaseChangeLog:
   - include:
       file: 007-partner-profile.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 008-partner-profile-settings.yaml
+      relativeToChangelogFile: true

@@ -33,7 +33,7 @@ services:
       YANDEX_CLIENT_ID: e2e-client-id
       YANDEX_CLIENT_SECRET: e2e-client-secret
       YANDEX_REDIRECT_URI: ${E2E_BASE_URL:-http://localhost:18088}/api/v1/auth/yandex/callback
-      PARTNER_REGISTRATION_APPROVED_LOGO_ASSET_KEYS: simbirsoft
+      PARTNER_REGISTRATION_APPROVED_LOGO_ASSET_KEYS: simbirsoft,17soft
       SESSION_COOKIE_SECURE: "false"
     depends_on:
       postgres:

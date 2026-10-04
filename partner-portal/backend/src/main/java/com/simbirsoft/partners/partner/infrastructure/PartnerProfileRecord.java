@@ -40,6 +40,18 @@ public class PartnerProfileRecord {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "encrypted_contact_overrides", columnDefinition = "bytea")
+    private byte[] encryptedContactOverrides;
+
+    @Column(name = "locale", nullable = false, length = 2)
+    private String locale;
+
+    @Column(name = "email_notifications_enabled", nullable = false)
+    private boolean emailNotificationsEnabled;
+
+    @Column(name = "in_app_notifications_enabled", nullable = false)
+    private boolean inAppNotificationsEnabled;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -56,6 +68,10 @@ public class PartnerProfileRecord {
         record.approvedAt = profile.approvedAt();
         record.createdAt = profile.createdAt();
         record.updatedAt = profile.updatedAt();
+        record.encryptedContactOverrides = profile.encryptedContactOverrides();
+        record.locale = profile.locale();
+        record.emailNotificationsEnabled = profile.emailNotificationsEnabled();
+        record.inAppNotificationsEnabled = profile.inAppNotificationsEnabled();
         return record;
     }
 
@@ -67,11 +83,16 @@ public class PartnerProfileRecord {
         approvedRevisionNumber = profile.approvedRevisionNumber();
         approvedAt = profile.approvedAt();
         updatedAt = profile.updatedAt();
+        encryptedContactOverrides = profile.encryptedContactOverrides();
+        locale = profile.locale();
+        emailNotificationsEnabled = profile.emailNotificationsEnabled();
+        inAppNotificationsEnabled = profile.inAppNotificationsEnabled();
     }
 
     PartnerProfile toDomain() {
         return new PartnerProfile(id, identityProvider, externalSubject, applicationId,
-                approvedRevisionNumber, approvedAt, createdAt, updatedAt);
+                approvedRevisionNumber, approvedAt, createdAt, updatedAt, encryptedContactOverrides, locale,
+                emailNotificationsEnabled, inAppNotificationsEnabled);
     }
 
     public UUID getId() { return id; }

@@ -17,6 +17,7 @@ import com.simbirsoft.partners.access.application.StaffAuthenticationFailedExcep
 import com.simbirsoft.partners.access.application.StaffIdentity;
 import com.simbirsoft.partners.access.application.StaffRole;
 import com.simbirsoft.partners.access.application.StaffRoleGrantStore;
+import com.simbirsoft.partners.audit.application.PartnerProfileChangeAudit;
 import com.simbirsoft.partners.access.infrastructure.LdapConnectionFactory;
 import com.simbirsoft.partners.partner.application.ApprovedPartnerProfileSource;
 import com.simbirsoft.partners.partner.application.PartnerProfileStore;
@@ -55,6 +56,7 @@ class StaffLdapLoginFlowTest {
     @MockitoBean private PartnerApplicationStore partnerApplicationStore;
     @MockitoBean(name = "jpaPartnerProfileStore") private PartnerProfileStore partnerProfileStore;
     @MockitoBean(name = "jpaApprovedPartnerProfileSource") private ApprovedPartnerProfileSource approvedPartnerProfileSource;
+    @MockitoBean private PartnerProfileChangeAudit partnerProfileChangeAudit;
 
     @Test
     void csrfBootstrapExposesTheHeaderNameForBrowserLogin() throws Exception {

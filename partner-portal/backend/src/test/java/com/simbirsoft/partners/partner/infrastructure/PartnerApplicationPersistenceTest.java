@@ -9,7 +9,12 @@ import com.simbirsoft.partners.partner.domain.PartnerType;
 import com.simbirsoft.partners.partner.domain.PartnerApplicationRevision;
 import com.simbirsoft.partners.partner.domain.PartnerApplicationStatusEvent;
 import com.simbirsoft.partners.partner.application.PartnerProfileService;
+import com.simbirsoft.partners.partner.application.PartnerProfileStore;
+import com.simbirsoft.partners.partner.application.ApprovedPartnerProfileSource;
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
+import com.simbirsoft.partners.audit.infrastructure.PartnerProfileAuditRepository;
+import com.simbirsoft.partners.audit.infrastructure.JpaPartnerProfileChangeAudit;
+import com.simbirsoft.partners.partner.application.PartnerProfileContactsProtector;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -57,6 +62,9 @@ class PartnerApplicationPersistenceTest {
 
     @Autowired
     PartnerProfileJpaRepository profileRepository;
+
+    @Autowired
+    PartnerProfileAuditRepository profileAuditRepository;
 
     @Autowired
     TestEntityManager entityManager;
@@ -159,8 +167,8 @@ class PartnerApplicationPersistenceTest {
         store.saveAndFlush(PartnerApplicationRecord.from(approved, protector));
         entityManager.flush();
         entityManager.clear();
-        var profileService = new PartnerProfileService(new JpaPartnerProfileStore(profileRepository),
-                new JpaApprovedPartnerProfileSource(store, protector));
+        var profileService = profileService(new JpaPartnerProfileStore(profileRepository),
+                new JpaApprovedPartnerProfileSource(store, protector), protector);
 
         var profile = profileService.current(new PartnerPrincipal("yandex", "subject-1"));
 
@@ -180,7 +188,7 @@ class PartnerApplicationPersistenceTest {
         store.saveAndFlush(PartnerApplicationRecord.from(approved, protector));
         var profiles = new JpaPartnerProfileStore(profileRepository);
         var source = new JpaApprovedPartnerProfileSource(store, protector);
-        var profileService = new PartnerProfileService(profiles, source);
+        var profileService = profileService(profiles, source, protector);
         profileService.activate(approved);
 
         var pendingRevisionData = new PartnerRegistrationData(PartnerType.LEGAL_ENTITY, "Новое имя",
@@ -224,8 +232,8 @@ class PartnerApplicationPersistenceTest {
                         new PartnerApplicationStatusEvent(PartnerApplicationStatus.MANUAL_REVIEW,
                                 "PARTNER", null, NOW.plusSeconds(60))));
         store.saveAndFlush(PartnerApplicationRecord.from(pending, protector));
-        var profileService = new PartnerProfileService(new JpaPartnerProfileStore(profileRepository),
-                new JpaApprovedPartnerProfileSource(store, protector));
+        var profileService = profileService(new JpaPartnerProfileStore(profileRepository),
+                new JpaApprovedPartnerProfileSource(store, protector), protector);
 
         var profile = profileService.current(new PartnerPrincipal("yandex", "subject-1"));
 
@@ -239,6 +247,42 @@ class PartnerApplicationPersistenceTest {
     private static PartnerApplication submittedApplication() {
         return PartnerApplication.submit(UUID.randomUUID(), "yandex", "subject-1",
                 registrationData(), consent(), NOW);
+    }
+
+    private PartnerProfileService profileService(PartnerProfileStore profiles,
+            ApprovedPartnerProfileSource source, RegistrationDataProtector protector) {
+        return new PartnerProfileService(profiles, source, protector,
+                new JpaPartnerProfileChangeAudit(profileAuditRepository));
+    }
+
+    @Test
+    void profileSettingsStoreEncryptedContactsAndAppendAuditFieldsWithoutValues() {
+        RegistrationDataProtector protector = new RegistrationDataProtector(
+                new ObjectMapper(), encryptionKey(), hashKey());
+        PartnerApplication approved = submittedApplication().decide(
+                PartnerApplicationStatus.APPROVED, "ivan.neshin", null, null, NOW.plusSeconds(30));
+        store.saveAndFlush(PartnerApplicationRecord.from(approved, protector));
+        var service = profileService(new JpaPartnerProfileStore(profileRepository),
+                new JpaApprovedPartnerProfileSource(store, protector), protector);
+        service.activate(approved);
+
+        var updated = service.updateCurrent(new PartnerPrincipal("yandex", "subject-1"),
+                new PartnerProfileService.ProfileUpdate("Изменённое имя", "changed@example.test", "+79991112233",
+                        "KZ", false, true));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(updated.fullName()).isEqualTo("Изменённое имя");
+        var profileRecord = profileRepository.findByIdentityProviderAndExternalSubject("yandex", "subject-1").orElseThrow();
+        var contactCiphertext = profileRecord.toDomain().encryptedContactOverrides();
+        assertThat(new String(contactCiphertext, StandardCharsets.UTF_8))
+                .doesNotContain("Изменённое имя", "changed@example.test", "+79991112233");
+        assertThat(profileAuditRepository.findAll()).singleElement().satisfies(audit -> {
+            assertThat(audit.getChangedFields()).contains("fullName", "email", "phone", "locale")
+                    .doesNotContain("Изменённое имя", "changed@example.test", "+79991112233");
+        });
+        assertThat(updated.locale()).isEqualTo("KZ");
+        assertThat(updated.emailNotificationsEnabled()).isFalse();
     }
 
     private static PartnerRegistrationData registrationData() {
