@@ -16,6 +16,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.simbirsoft.partners.access.application.ExternalIdentity;
 import com.simbirsoft.partners.access.application.YandexIdentityProvider;
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
+import com.simbirsoft.partners.access.application.StaffRoleGrantStore;
+import com.simbirsoft.partners.access.infrastructure.StaffRoleGrantRepository;
+import com.simbirsoft.partners.access.infrastructure.StaffRoleAuditRepository;
+import com.simbirsoft.partners.localization.application.RegistrationContentStore;
+import com.simbirsoft.partners.partner.infrastructure.PartnerApplicationStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -43,6 +48,21 @@ class YandexOAuthFlowTest {
 
     @MockitoBean
     private YandexIdentityProvider identityProvider;
+
+    @MockitoBean(name = "jpaStaffRoleGrantStore")
+    private StaffRoleGrantStore roleGrants;
+
+    @MockitoBean
+    private StaffRoleGrantRepository roleGrantRepository;
+
+    @MockitoBean
+    private StaffRoleAuditRepository roleAuditRepository;
+
+    @MockitoBean(name = "jpaRegistrationContentStore")
+    private RegistrationContentStore registrationContentStore;
+
+    @MockitoBean
+    private PartnerApplicationStore partnerApplicationStore;
 
     @Autowired
     private Environment environment;

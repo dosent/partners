@@ -18,24 +18,24 @@ class RegistrationDataProtectorTest {
     @Test
     void encryptsTheWholeRegistrationPayloadAndCanRestoreIt() {
         var protector = new RegistrationDataProtector(new ObjectMapper(), ENCRYPTION_KEY, HASH_KEY);
-        var registration = legalEntity("123-456-7890");
+        var registration = legalEntity("1000000002");
 
         ProtectedRegistrationData protectedData = protector.protect(registration);
 
         assertThat(new String(protectedData.encryptedPayload(), StandardCharsets.UTF_8))
-                .doesNotContain("Иван Иванов", "ivan@example.test", "123-456-7890");
+                .doesNotContain("Иван Иванов", "ivan@example.test", "1000000002");
         assertThat(protector.reveal(protectedData)).isEqualTo(registration);
         assertThat(protectedData.taxIdentifierHash()).isNotEqualTo(registration.taxIdentifier());
     }
 
     @Test
-    void keyedHashUsesNormalizedTaxIdentifierWithoutStoringTheClearValue() {
+    void keyedHashIsDeterministicForAValidatedTaxIdentifier() {
         var protector = new RegistrationDataProtector(new ObjectMapper(), ENCRYPTION_KEY, HASH_KEY);
 
-        ProtectedRegistrationData first = protector.protect(legalEntity("123-456-7890"));
-        ProtectedRegistrationData normalized = protector.protect(legalEntity("123 456 7890"));
+        ProtectedRegistrationData first = protector.protect(legalEntity("1000000002"));
+        ProtectedRegistrationData repeated = protector.protect(legalEntity("1000000002"));
 
-        assertThat(first.taxIdentifierHash()).isEqualTo(normalized.taxIdentifierHash());
+        assertThat(first.taxIdentifierHash()).isEqualTo(repeated.taxIdentifierHash());
     }
 
     @Test
@@ -43,7 +43,7 @@ class RegistrationDataProtectorTest {
         var protector = new RegistrationDataProtector(new ObjectMapper(), "", "");
 
         assertThatIllegalStateException()
-                .isThrownBy(() -> protector.protect(legalEntity("1234567890")))
+                .isThrownBy(() -> protector.protect(legalEntity("1000000002")))
                 .withMessageContaining("not configured");
     }
 

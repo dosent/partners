@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { E2E_BASE_URL } from './base-url.js';
 
 const exec = promisify(execFile);
 const projectDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -39,7 +40,7 @@ export async function startE2eStack() {
   await compose('down', '-v', '--remove-orphans');
   await compose('up', '--build', '--wait');
 
-  const response = await fetch('http://127.0.0.1:18088/');
+  const response = await fetch(`${E2E_BASE_URL}/`);
   if (!response.ok) {
     throw new Error(`E2e frontend is not ready: HTTP ${response.status}`);
   }

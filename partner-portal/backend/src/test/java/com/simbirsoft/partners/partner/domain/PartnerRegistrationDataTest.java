@@ -22,7 +22,7 @@ class PartnerRegistrationDataTest {
     void soleProprietorRequiresTaxIdentifierButNotCompanyName() {
         assertThatCode(() -> new PartnerRegistrationData(
                 PartnerType.SOLE_PROPRIETOR, "Иван Иванов", "ivan@example.test", "+70000000000",
-                "RU", "Самарская область", null, "123456789012"))
+                "RU", "Самарская область", null, "100000000074"))
                 .doesNotThrowAnyException();
 
         assertThatIllegalArgumentException().isThrownBy(() -> new PartnerRegistrationData(
@@ -34,11 +34,11 @@ class PartnerRegistrationDataTest {
     void legalEntityRequiresCompanyNameAndTaxIdentifier() {
         assertThatCode(() -> new PartnerRegistrationData(
                 PartnerType.LEGAL_ENTITY, "Иван Иванов", "ivan@example.test", "+70000000000",
-                "RU", "Самарская область", "ООО Пример", "1234567890"))
+                "RU", "Самарская область", "ООО Пример", "1000000002"))
                 .doesNotThrowAnyException();
 
         assertThatIllegalArgumentException().isThrownBy(() -> new PartnerRegistrationData(
                 PartnerType.LEGAL_ENTITY, "Иван Иванов", "ivan@example.test", "+70000000000",
-                "RU", "Самарская область", null, "1234567890"));
+                "RU", "Самарская область", null, "1000000002"));
     }
 }

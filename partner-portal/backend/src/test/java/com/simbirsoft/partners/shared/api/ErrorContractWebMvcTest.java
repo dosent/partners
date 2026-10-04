@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,8 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,13 +40,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 @WebMvcTest(controllers = ErrorContractWebMvcTest.FixtureController.class)
 @Import(ErrorContractWebMvcTest.FixtureController.class)
+@WithMockUser(username = "error-contract-test")
 class ErrorContractWebMvcTest {
     @Autowired
     MockMvc mvc;
 
     @Test
     void validationErrorHasFieldDetailsAndServerTraceId() throws Exception {
-        mvc.perform(post("/api/v1/error-fixture").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/error-fixture").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\"}").header("X-Trace-Id", "client-supplied"))
                 .andExpect(status().isBadRequest())
                 .andExpect(header().exists("X-Trace-Id"))
@@ -60,7 +64,7 @@ class ErrorContractWebMvcTest {
 
     @Test
     void malformedJsonUsesErrorEnvelope() throws Exception {
-        mvc.perform(post("/api/v1/error-fixture").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/error-fixture").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content("{invalid"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"))
@@ -105,7 +109,7 @@ class ErrorContractWebMvcTest {
 
     @Test
     void unsupportedMethodPreservesMethodNotAllowedStatus() throws Exception {
-        mvc.perform(put("/api/v1/error-fixture"))
+        mvc.perform(put("/api/v1/error-fixture").with(csrf()))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.status").value(405))
                 .andExpect(jsonPath("$.traceId").isNotEmpty())
@@ -114,7 +118,8 @@ class ErrorContractWebMvcTest {
 
     @Test
     void unsupportedMediaTypePreservesUnsupportedMediaTypeStatus() throws Exception {
-        mvc.perform(post("/api/v1/error-fixture").contentType(MediaType.TEXT_PLAIN).content("plain"))
+        mvc.perform(post("/api/v1/error-fixture").with(csrf())
+                        .contentType(MediaType.TEXT_PLAIN).content("plain"))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(jsonPath("$.status").value(415))
                 .andExpect(jsonPath("$.traceId").isNotEmpty())
@@ -157,7 +162,7 @@ class ErrorContractWebMvcTest {
     }
 
     private void assertError(String path, int expectedStatus, String expectedCode) throws Exception {
-        mvc.perform(get("/api/v1/error-fixture/" + path))
+        mvc.perform(get("/api/v1/error-fixture/" + path).with(user("error-contract-test")))
                 .andExpect(status().is(expectedStatus))
                 .andExpect(header().exists("X-Trace-Id"))
                 .andExpect(jsonPath("$.timestamp").isNotEmpty())

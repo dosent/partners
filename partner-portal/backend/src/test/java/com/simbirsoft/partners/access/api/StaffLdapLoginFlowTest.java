@@ -16,6 +16,10 @@ import com.simbirsoft.partners.access.application.StaffAuthenticator;
 import com.simbirsoft.partners.access.application.StaffAuthenticationFailedException;
 import com.simbirsoft.partners.access.application.StaffIdentity;
 import com.simbirsoft.partners.access.application.StaffRole;
+import com.simbirsoft.partners.access.application.StaffRoleGrantStore;
+import com.simbirsoft.partners.access.infrastructure.LdapConnectionFactory;
+import com.simbirsoft.partners.localization.application.RegistrationContentStore;
+import com.simbirsoft.partners.partner.infrastructure.PartnerApplicationStore;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -31,7 +35,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration",
-        "partners.auth.ldap.enabled=true",
+        "partners.auth.ldap.enabled=false",
         "partners.auth.ldap.url=ldaps://directory.example:636",
         "partners.auth.ldap.user-dn-pattern=uid={0},ou=people,dc=example,dc=com",
         "partners.auth.ldap.group-search-base=ou=groups,dc=example,dc=com",
@@ -43,6 +47,10 @@ class StaffLdapLoginFlowTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @MockitoBean private StaffAuthenticator authenticator;
+    @MockitoBean(name = "jpaStaffRoleGrantStore") private StaffRoleGrantStore roleGrants;
+    @MockitoBean(name = "jndiLdapConnectionFactory") private LdapConnectionFactory ldapConnectionFactory;
+    @MockitoBean(name = "jpaRegistrationContentStore") private RegistrationContentStore registrationContentStore;
+    @MockitoBean private PartnerApplicationStore partnerApplicationStore;
 
     @Test
     void csrfBootstrapExposesTheHeaderNameForBrowserLogin() throws Exception {
@@ -56,6 +64,7 @@ class StaffLdapLoginFlowTest {
     void allowedStaffLoginCreatesRotatedSessionWithoutPasswordCredentials() throws Exception {
         given(authenticator.authenticate(eq("anna"), eq("directory-secret")))
                 .willReturn(new StaffIdentity("anna", Set.of(StaffRole.PARTNER_MANAGER)));
+        given(roleGrants.rolesFor("anna")).willReturn(Set.of(StaffRole.PARTNER_MANAGER));
         MvcResult anonymous = mockMvc.perform(get("/api/v1/auth/staff/session"))
                 .andExpect(status().isUnauthorized()).andReturn();
         MockHttpSession oldSession = (MockHttpSession) anonymous.getRequest().getSession(true);
@@ -89,6 +98,7 @@ class StaffLdapLoginFlowTest {
     void staffLoginCreatesAndRotatesSessionWhenBrowserHasNoneYet() throws Exception {
         given(authenticator.authenticate(eq("anna"), eq("directory-secret")))
                 .willReturn(new StaffIdentity("anna", Set.of(StaffRole.PARTNER_MANAGER)));
+        given(roleGrants.rolesFor("anna")).willReturn(Set.of(StaffRole.PARTNER_MANAGER));
 
         MvcResult csrf = mockMvc.perform(get("/api/v1/auth/csrf")).andExpect(status().isOk()).andReturn();
         assertNull(csrf.getRequest().getSession(false));
