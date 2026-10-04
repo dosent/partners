@@ -139,6 +139,17 @@ test('staff approval makes the partner portal available without demo data', asyn
       baseURL: E2E_BASE_URL,
     });
     const approvedPartnerPage = await partnerContext.newPage();
+    let servedLegacyRussianContent = false;
+    await approvedPartnerPage.route('**/api/v1/public/registration-content/RU', async route => {
+      const response = await route.fetch();
+      const content = await response.json();
+      for (const key of Object.keys(content.strings ?? {})) {
+        if (key.startsWith('portal.profile.')) delete content.strings[key];
+      }
+      expect(Object.keys(content.strings)).toHaveLength(50);
+      servedLegacyRussianContent = true;
+      await route.fulfill({ response, body: JSON.stringify(content) });
+    });
     let releaseProfileRequest;
     const profileRequestGate = new Promise(resolve => { releaseProfileRequest = resolve; });
     await approvedPartnerPage.route('**/api/v1/partners/me', async route => {
@@ -146,10 +157,14 @@ test('staff approval makes the partner portal available without demo data', asyn
       await route.continue();
     });
     await loginAsPartner(approvedPartnerPage, partner.subject);
-    await approvedPartnerPage.getByRole('button', { name: 'E2E RU navigation' }).click();
-    await expect(approvedPartnerPage.getByText('E2E RU loading')).toBeVisible();
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'Обзор' })).toBeVisible();
+    expect(servedLegacyRussianContent).toBe(true);
+    await approvedPartnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
+      .getByRole('button', { name: 'Профиль' }).click();
+    await expect(approvedPartnerPage.getByText('Загружаем профиль…')).toBeVisible();
     releaseProfileRequest();
     await expect(approvedPartnerPage.getByText(partner.fullName)).toBeVisible();
+    await approvedPartnerPage.unroute('**/api/v1/public/registration-content/RU');
     await approvedPartnerPage.unroute('**/api/v1/partners/me');
     await approvedPartnerPage.getByRole('button', { name: 'Обзор' }).click();
     await expect(approvedPartnerPage.getByRole('heading', { name: 'Обзор' })).toBeVisible();
@@ -171,8 +186,8 @@ test('staff approval makes the partner portal available without demo data', asyn
     expect(profile).not.toHaveProperty('taxIdentifier');
     expect(profile).not.toHaveProperty('inn');
 
-    await approvedPartnerPage.getByRole('button', { name: 'E2E RU navigation' }).click();
-    await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E RU title' })).toBeVisible();
+    await approvedPartnerPage.getByRole('button', { name: 'Профиль' }).click();
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'Профиль' })).toBeVisible();
     await expect(approvedPartnerPage.getByText(partner.fullName)).toBeVisible();
     await expect(approvedPartnerPage.getByText(partner.email)).toBeVisible();
 
@@ -181,20 +196,20 @@ test('staff approval makes the partner portal available without demo data', asyn
     await approvedPartnerPage.getByLabel('ФИО', { exact: true }).fill(changedName);
     await approvedPartnerPage.getByLabel('Электронная почта', { exact: true }).fill(changedEmail);
     await approvedPartnerPage.getByLabel('Телефон', { exact: true }).fill('+79991112233');
-    await approvedPartnerPage.getByLabel('E2E RU locale.label').selectOption('EN');
-    await approvedPartnerPage.getByLabel('E2E RU notifications.email').uncheck();
+    await approvedPartnerPage.getByLabel('Язык интерфейса').selectOption('EN');
+    await approvedPartnerPage.getByLabel('По электронной почте').uncheck();
     await approvedPartnerPage.route('**/api/v1/partners/me/settings', async route => {
       await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
     });
-    await approvedPartnerPage.getByRole('button', { name: 'E2E RU actions.save' }).click();
-    await expect(approvedPartnerPage.getByRole('alert')).toContainText('E2E RU errors.save');
+    await approvedPartnerPage.getByRole('button', { name: 'Сохранить изменения' }).click();
+    await expect(approvedPartnerPage.getByRole('alert')).toContainText('Не удалось сохранить настройки. Попробуйте ещё раз.');
     await approvedPartnerPage.unroute('**/api/v1/partners/me/settings');
     await approvedPartnerPage.route('**/api/v1/partners/me/settings', async route => {
       await new Promise(resolve => setTimeout(resolve, 300));
       await route.continue();
     });
-    await approvedPartnerPage.getByRole('button', { name: 'E2E RU actions.save' }).click();
-    await expect(approvedPartnerPage.getByRole('button', { name: 'E2E RU actions.saving' })).toBeVisible();
+    await approvedPartnerPage.getByRole('button', { name: 'Сохранить изменения' }).click();
+    await expect(approvedPartnerPage.getByRole('button', { name: 'Сохранение…' })).toBeVisible();
     await approvedPartnerPage.unroute('**/api/v1/partners/me/settings');
     await expect(approvedPartnerPage.getByRole('status')).toContainText('E2E EN status.saved');
     await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E EN title' })).toBeVisible();
