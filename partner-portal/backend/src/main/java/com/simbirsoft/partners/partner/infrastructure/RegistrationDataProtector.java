@@ -2,6 +2,7 @@ package com.simbirsoft.partners.partner.infrastructure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simbirsoft.partners.partner.domain.PartnerRegistrationData;
+import com.simbirsoft.partners.partner.application.PartnerProfileContactsProtector;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,11 +20,12 @@ import java.util.Base64;
 import java.util.Locale;
 
 @Component
-public final class RegistrationDataProtector {
+public final class RegistrationDataProtector implements PartnerProfileContactsProtector {
     private static final String AES_GCM = "AES/GCM/NoPadding";
     private static final String HMAC_SHA_256 = "HmacSHA256";
     private static final int NONCE_LENGTH = 12;
     private static final int AUTH_TAG_BITS = 128;
+    private static final String PROFILE_CONTACTS_AAD = "partner-profile-contacts:v1";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ObjectMapper objectMapper;
@@ -67,6 +69,30 @@ public final class RegistrationDataProtector {
         }
     }
 
+    @Override
+    public byte[] protect(ProfileContacts contacts) {
+        byte[] aesKey = decodeKey(encryptionKey, 32, "REGISTRATION_ENCRYPTION_KEY");
+        try {
+            return encryptWithContext(objectMapper.writeValueAsBytes(contacts), PROFILE_CONTACTS_AAD, aesKey);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Partner profile contacts could not be protected");
+        } finally {
+            Arrays.fill(aesKey, (byte) 0);
+        }
+    }
+
+    @Override
+    public ProfileContacts reveal(byte[] encryptedContacts) {
+        byte[] aesKey = decodeKey(encryptionKey, 32, "REGISTRATION_ENCRYPTION_KEY");
+        try {
+            return objectMapper.readValue(decryptWithContext(encryptedContacts, PROFILE_CONTACTS_AAD, aesKey), ProfileContacts.class);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Protected partner profile contacts could not be read");
+        } finally {
+            Arrays.fill(aesKey, (byte) 0);
+        }
+    }
+
     private static String hashTaxIdentifier(String taxIdentifier, byte[] key) {
         String normalized = taxIdentifier.replaceAll("[\\s-]", "").toUpperCase(Locale.ROOT);
         if (normalized.isBlank()) {
@@ -83,13 +109,21 @@ public final class RegistrationDataProtector {
     }
 
     private static byte[] encrypt(byte[] clearPayload, String taxIdentifierHash, byte[] key) {
+        return encrypt(clearPayload, associatedData(taxIdentifierHash), key);
+    }
+
+    private static byte[] encryptWithContext(byte[] clearPayload, String context, byte[] key) {
+        return encrypt(clearPayload, context.getBytes(StandardCharsets.UTF_8), key);
+    }
+
+    private static byte[] encrypt(byte[] clearPayload, byte[] aad, byte[] key) {
         byte[] nonce = new byte[NONCE_LENGTH];
         RANDOM.nextBytes(nonce);
         try {
             Cipher cipher = Cipher.getInstance(AES_GCM);
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"),
                     new GCMParameterSpec(AUTH_TAG_BITS, nonce));
-            cipher.updateAAD(associatedData(taxIdentifierHash));
+            cipher.updateAAD(aad);
             byte[] ciphertext = cipher.doFinal(clearPayload);
             return ByteBuffer.allocate(nonce.length + ciphertext.length).put(nonce).put(ciphertext).array();
         } catch (GeneralSecurityException exception) {
@@ -98,6 +132,14 @@ public final class RegistrationDataProtector {
     }
 
     private static byte[] decrypt(byte[] encryptedPayload, String taxIdentifierHash, byte[] key) {
+        return decrypt(encryptedPayload, associatedData(taxIdentifierHash), key);
+    }
+
+    private static byte[] decryptWithContext(byte[] encryptedPayload, String context, byte[] key) {
+        return decrypt(encryptedPayload, context.getBytes(StandardCharsets.UTF_8), key);
+    }
+
+    private static byte[] decrypt(byte[] encryptedPayload, byte[] aad, byte[] key) {
         if (encryptedPayload.length <= NONCE_LENGTH) {
             throw new IllegalStateException("Protected registration data is invalid");
         }
@@ -107,7 +149,7 @@ public final class RegistrationDataProtector {
             Cipher cipher = Cipher.getInstance(AES_GCM);
             cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"),
                     new GCMParameterSpec(AUTH_TAG_BITS, nonce));
-            cipher.updateAAD(associatedData(taxIdentifierHash));
+            cipher.updateAAD(aad);
             return cipher.doFinal(ciphertext);
         } catch (GeneralSecurityException exception) {
             throw new IllegalStateException("Protected registration data could not be authenticated");

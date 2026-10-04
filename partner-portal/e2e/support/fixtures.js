@@ -69,7 +69,7 @@ export async function loginAsPartner(page, subject) {
   return page;
 }
 
-export async function ensurePublishedTestContent(request) {
+export async function ensurePublishedTestContent(request, locale = 'RU') {
   const csrf = await csrfToken(request);
   const login = await request.post('/api/v1/auth/staff/login', {
     data: { username: 'ivan.neshin', password: 'e2e-password' },
@@ -77,21 +77,22 @@ export async function ensurePublishedTestContent(request) {
   });
   if (!login.ok()) throw new Error(`Content publisher staff login failed: HTTP ${login.status()}`);
 
-  const stateResponse = await request.get('/api/v1/admin/registration-content/ru');
+  const localePath = locale.toLowerCase();
+  const stateResponse = await request.get(`/api/v1/admin/registration-content/${localePath}`);
   if (!stateResponse.ok()) throw new Error(`Could not read registration content draft: HTTP ${stateResponse.status()}`);
   const state = await stateResponse.json();
-  const draft = await request.put('/api/v1/admin/registration-content/ru/draft', {
-    data: { expectedDraftVersion: state.draftVersion ?? 0, ...registrationContentFixture() },
+  const draft = await request.put(`/api/v1/admin/registration-content/${localePath}/draft`, {
+    data: { expectedDraftVersion: state.draftVersion ?? 0, ...registrationContentFixture(locale) },
     headers: { [csrf.headerName]: csrf.token },
   });
   if (!draft.ok()) throw new Error(`Could not save registration content fixture: HTTP ${draft.status()} ${await draft.text()}`);
   const saved = await draft.json();
-  const publish = await request.post('/api/v1/admin/registration-content/ru/publish', {
+  const publish = await request.post(`/api/v1/admin/registration-content/${localePath}/publish`, {
     data: { expectedDraftVersion: saved.draftVersion },
     headers: { [csrf.headerName]: csrf.token },
   });
   if (!publish.ok()) throw new Error(`Could not publish registration content fixture: HTTP ${publish.status()} ${await publish.text()}`);
-  const publicResponse = await request.get('/api/v1/public/registration-content/RU');
+  const publicResponse = await request.get(`/api/v1/public/registration-content/${locale}`);
   if (!publicResponse.ok()) throw new Error(`Could not read published registration content: HTTP ${publicResponse.status()} ${await publicResponse.text()}`);
   return publicResponse.json();
 }

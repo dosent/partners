@@ -10,15 +10,19 @@ import java.util.UUID;
 public record PartnerProfileResponse(
         @Schema(description = "Идентификатор профиля") UUID id,
         @Schema(description = "Тип партнёра") PartnerType partnerType,
-        @Schema(description = "ФИО из одобренной заявки") String fullName,
-        @Schema(description = "Email из одобренной заявки") String email,
-        @Schema(description = "Телефон из одобренной заявки") String phone,
+        @Schema(description = "Разрешённое контактное ФИО") String fullName,
+        @Schema(description = "Разрешённый контактный email") String email,
+        @Schema(description = "Разрешённый контактный телефон") String phone,
         @Schema(description = "Код страны") String countryCode,
         @Schema(description = "Регион") String region,
         @Schema(description = "Название организации, если указано") String companyName,
-        @Schema(description = "Время одобрения заявки") Instant approvedAt) {
+        @Schema(description = "Время одобрения заявки") Instant approvedAt,
+        @Schema(description = "Локаль профиля: RU, KZ или EN") String locale,
+        @Schema(description = "Включены email-уведомления") boolean emailNotificationsEnabled,
+        @Schema(description = "Включены уведомления в кабинете") boolean inAppNotificationsEnabled) {
     public static PartnerProfileResponse from(ProfileDetails details) {
         return new PartnerProfileResponse(details.id(), details.partnerType(), details.fullName(), details.email(),
-                details.phone(), details.countryCode(), details.region(), details.companyName(), details.approvedAt());
+                details.phone(), details.countryCode(), details.region(), details.companyName(), details.approvedAt(),
+                details.locale(), details.emailNotificationsEnabled(), details.inAppNotificationsEnabled());
     }
 }

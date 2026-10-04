@@ -40,6 +40,16 @@ export const getMyPartnerProfile = () => fetch(
   `${API}/partners/me`, { credentials: 'include' },
 ).then(decode);
 
+export async function updateMyPartnerProfileSettings(settings) {
+  const headers = await csrfHeaders();
+  return decode(await fetch(`${API}/partners/me/settings`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(settings),
+  }));
+}
+
 export async function submitPartnerApplication(payload, resubmit = false) {
   const headers = await csrfHeaders();
   return decode(await fetch(`${API}/partner-applications${resubmit ? '/me' : ''}`, {

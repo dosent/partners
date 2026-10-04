@@ -6,6 +6,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,5 +29,16 @@ public class PartnerProfileController {
             @ApiResponse(responseCode = "404", description = "Активный профиль не найден")})
     public PartnerProfileResponse current(@AuthenticationPrincipal PartnerPrincipal owner) {
         return PartnerProfileResponse.from(service.current(owner));
+    }
+
+    @PutMapping("/me/settings")
+    @Operation(summary = "Изменить контактные данные и настройки собственного профиля")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Профиль изменён"),
+            @ApiResponse(responseCode = "400", description = "Некорректные настройки профиля"),
+            @ApiResponse(responseCode = "401", description = "Требуется партнёрская сессия"),
+            @ApiResponse(responseCode = "404", description = "Активный профиль не найден")})
+    public PartnerProfileResponse update(@AuthenticationPrincipal PartnerPrincipal owner,
+            @Valid @RequestBody PartnerProfileUpdateRequest request) {
+        return PartnerProfileResponse.from(service.updateCurrent(owner, request.toCommand()));
     }
 }

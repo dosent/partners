@@ -1,6 +1,7 @@
 package com.simbirsoft.partners.partner.application;
 
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
+import com.simbirsoft.partners.audit.application.PartnerProfileChangeAudit;
 import com.simbirsoft.partners.partner.domain.LegalConsent;
 import com.simbirsoft.partners.partner.domain.PartnerApplication;
 import com.simbirsoft.partners.partner.domain.PartnerApplicationStatus;
@@ -30,7 +31,7 @@ class PartnerProfileServiceTest {
         store.save(profile);
         var source = new TrackingProfileSource();
         source.registration = Optional.of(registration("Свой партнёр"));
-        var service = new PartnerProfileService(store, source);
+        var service = service(store, source);
 
         var current = service.current(new PartnerPrincipal("YANDEX", "owner-1"));
 
@@ -45,7 +46,7 @@ class PartnerProfileServiceTest {
         PartnerApplication approved = approvedApplication("owner-1");
         store.save(PartnerProfile.approved("YANDEX", "owner-1", approved.id(), 1, NOW));
         var source = new TrackingProfileSource();
-        var service = new PartnerProfileService(store, source);
+        var service = service(store, source);
 
         assertThatThrownBy(() -> service.current(new PartnerPrincipal("YANDEX", "owner-2")))
                 .isInstanceOf(ResponseStatusException.class)
@@ -56,7 +57,7 @@ class PartnerProfileServiceTest {
     @Test
     void approvalProvisioningIsIdempotentForTheSameOwnerAndApplication() {
         var store = new InMemoryProfileStore();
-        var service = new PartnerProfileService(store, new TrackingProfileSource());
+        var service = service(store, new TrackingProfileSource());
         PartnerApplication approved = approvedApplication("owner-1");
 
         service.activate(approved);
@@ -65,6 +66,34 @@ class PartnerProfileServiceTest {
 
         assertThat(store.byIdentity).hasSize(1);
         assertThat(store.byIdentity.get("YANDEX:owner-1").id()).isEqualTo(firstId);
+    }
+
+    @Test
+    void approvalInitializesProfileLocaleFromAcceptedConsent() {
+        var store = new InMemoryProfileStore();
+        var service = service(store, new TrackingProfileSource());
+        PartnerApplication approved = PartnerApplication.submit(UUID.randomUUID(), "YANDEX", "owner-kz",
+                        registration("Партнёр"), new LegalConsent("KZ", "offer-1", NOW, "privacy-1", NOW), NOW)
+                .decide(PartnerApplicationStatus.APPROVED, "ivan.neshin", null, null, NOW.plusSeconds(30));
+
+        service.activate(approved);
+
+        assertThat(store.byIdentity.get("YANDEX:owner-kz").locale()).isEqualTo("KZ");
+    }
+
+    @Test
+    void repeatedApprovalPreservesPartnersLocaleAndNotificationPreferences() {
+        var store = new InMemoryProfileStore();
+        PartnerApplication approved = approvedApplication("owner-1");
+        PartnerProfile selected = PartnerProfile.approved("YANDEX", "owner-1", approved.id(), 1, NOW)
+                .withSettings(null, "KZ", false, false, NOW.plusSeconds(5));
+        store.save(selected);
+
+        service(store, new TrackingProfileSource()).activate(approved);
+
+        assertThat(store.byIdentity.get("YANDEX:owner-1").locale()).isEqualTo("KZ");
+        assertThat(store.byIdentity.get("YANDEX:owner-1").emailNotificationsEnabled()).isFalse();
+        assertThat(store.byIdentity.get("YANDEX:owner-1").inAppNotificationsEnabled()).isFalse();
     }
 
     @Test
@@ -86,12 +115,62 @@ class PartnerProfileServiceTest {
             }
         };
 
-        var current = new PartnerProfileService(store, source)
+        var current = service(store, source)
                 .current(new PartnerPrincipal("YANDEX", "legacy-owner"));
 
         assertThat(current.fullName()).isEqualTo("Одобренный партнёр");
         assertThat(store.byIdentity.get("YANDEX:legacy-owner").id()).isEqualTo(profile.id());
         assertThat(store.byIdentity.get("YANDEX:legacy-owner").approvedRevisionNumber()).isEqualTo(1);
+    }
+
+    @Test
+    void ownerCanUpdateOnlyContactsLocaleAndNotificationPreferencesWithAudit() {
+        var store = new InMemoryProfileStore();
+        PartnerApplication approved = approvedApplication("owner-1");
+        store.save(PartnerProfile.approved("YANDEX", "owner-1", approved.id(), 1, NOW));
+        var source = new TrackingProfileSource();
+        source.registration = Optional.of(registration("Одобренное имя"));
+        var audit = new TrackingProfileChangeAudit();
+        var service = new PartnerProfileService(store, source, testProtector(), audit);
+
+        var updated = service.updateCurrent(new PartnerPrincipal("YANDEX", "owner-1"),
+                new PartnerProfileService.ProfileUpdate("Изменённое имя", "new@example.test", "+79990000000",
+                        "KZ", false, false));
+
+        assertThat(updated.fullName()).isEqualTo("Изменённое имя");
+        assertThat(updated.email()).isEqualTo("new@example.test");
+        assertThat(updated.phone()).isEqualTo("+79990000000");
+        assertThat(updated.companyName()).isNull();
+        assertThat(updated.locale()).isEqualTo("KZ");
+        assertThat(updated.emailNotificationsEnabled()).isFalse();
+        assertThat(updated.inAppNotificationsEnabled()).isFalse();
+        assertThat(source.registration.orElseThrow().fullName()).isEqualTo("Одобренное имя");
+        assertThat(audit.owner).isEqualTo("YANDEX:owner-1");
+        assertThat(audit.changedFields).containsExactlyInAnyOrder("fullName", "email", "phone", "locale",
+                "emailNotificationsEnabled", "inAppNotificationsEnabled");
+    }
+
+    @Test
+    void profileUpdateCannotReadOrChangeAnotherOwnerAndRejectsInvalidLocale() {
+        var store = new InMemoryProfileStore();
+        PartnerApplication approved = approvedApplication("owner-1");
+        store.save(PartnerProfile.approved("YANDEX", "owner-1", approved.id(), 1, NOW));
+        var source = new TrackingProfileSource();
+        source.registration = Optional.of(registration("Чужое имя"));
+        var audit = new TrackingProfileChangeAudit();
+        var service = new PartnerProfileService(store, source, testProtector(), audit);
+
+        assertThatThrownBy(() -> service.updateCurrent(new PartnerPrincipal("YANDEX", "owner-2"),
+                new PartnerProfileService.ProfileUpdate("Попытка смены", "x@example.test", "+70000000000",
+                        "EN", true, true)))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode().value()).isEqualTo(404);
+        assertThatThrownBy(() -> service.updateCurrent(new PartnerPrincipal("YANDEX", "owner-1"),
+                new PartnerProfileService.ProfileUpdate("Имя", "x@example.test", "+70000000000",
+                        "FR", true, true)))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode().value()).isEqualTo(400);
+        assertThat(audit.changedFields).isEmpty();
     }
 
     private static PartnerApplication approvedApplication(String subject) {
@@ -103,6 +182,26 @@ class PartnerProfileServiceTest {
     private static PartnerRegistrationData registration(String name) {
         return new PartnerRegistrationData(PartnerType.INDIVIDUAL, name, "partner@example.test", "+70000000000",
                 "RU", "Ульяновск", null, null);
+    }
+
+    private static PartnerProfileService service(InMemoryProfileStore store, ApprovedPartnerProfileSource source) {
+        return new PartnerProfileService(store, source, testProtector(), (id, provider, subject, fields, time) -> { });
+    }
+
+    private static PartnerProfileContactsProtector testProtector() {
+        return new PartnerProfileContactsProtector() {
+            @Override
+            public byte[] protect(ProfileContacts contacts) {
+                return (contacts.fullName() + "\n" + contacts.email() + "\n" + contacts.phone())
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            }
+
+            @Override
+            public ProfileContacts reveal(byte[] encryptedContacts) {
+                String[] values = new String(encryptedContacts, java.nio.charset.StandardCharsets.UTF_8).split("\\n", -1);
+                return new ProfileContacts(values[0], values[1], values[2]);
+            }
+        };
     }
 
     private static class InMemoryProfileStore implements PartnerProfileStore {
@@ -135,6 +234,18 @@ class PartnerProfileServiceTest {
         public Optional<PartnerRegistrationData> findApprovedRegistration(PartnerProfile profile) {
             wasRead = true;
             return registration;
+        }
+    }
+
+    private static class TrackingProfileChangeAudit implements PartnerProfileChangeAudit {
+        private String owner;
+        private java.util.List<String> changedFields = java.util.List.of();
+
+        @Override
+        public void record(UUID profileId, String provider, String subject, java.util.List<String> fields,
+                Instant occurredAt) {
+            owner = provider + ":" + subject;
+            changedFields = java.util.List.copyOf(fields);
         }
     }
 }

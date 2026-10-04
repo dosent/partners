@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.simbirsoft.partners.access.application.ExternalIdentity;
 import com.simbirsoft.partners.access.application.YandexIdentityProvider;
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
+import com.simbirsoft.partners.audit.application.PartnerProfileChangeAudit;
 import com.simbirsoft.partners.access.application.StaffRoleGrantStore;
 import com.simbirsoft.partners.access.infrastructure.StaffRoleGrantRepository;
 import com.simbirsoft.partners.access.infrastructure.StaffRoleAuditRepository;
@@ -71,6 +72,9 @@ class YandexOAuthFlowTest {
 
     @MockitoBean(name = "jpaApprovedPartnerProfileSource")
     private ApprovedPartnerProfileSource approvedPartnerProfileSource;
+
+    @MockitoBean
+    private PartnerProfileChangeAudit partnerProfileChangeAudit;
 
     @Autowired
     private Environment environment;

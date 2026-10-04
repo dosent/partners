@@ -51,7 +51,7 @@ export function syntheticPartnerData() {
   };
 }
 
-export function registrationContentFixture() {
+export function registrationContentFixture(locale = 'RU') {
   const strings = {
     'registration.title': 'Заявка на партнёрство',
     'registration.types.individual': 'Физическое лицо',
@@ -111,12 +111,37 @@ export function registrationContentFixture() {
     body: `Искусственный текст оферты для автоматизированной проверки. Тип заявителя: ${type}. Документ не является юридической офертой.`,
   }]));
 
+  const profileValues = Object.fromEntries([
+    'navigation', 'title', 'description', 'settings.title', 'locale.label', 'locale.RU', 'locale.KZ', 'locale.EN',
+    'notifications.title', 'notifications.email', 'notifications.inApp', 'actions.save', 'actions.saving',
+    'status.saved', 'errors.save', 'loading', 'errors.load', 'errors.localeUnavailable',
+  ].map(key => [`portal.profile.${key}`, `E2E ${locale} ${key}`]));
+  Object.assign(strings, profileValues);
+  if (locale !== 'RU') {
+    strings['portal.title'] = `E2E ${locale} Partner Portal`;
+    strings['portal.status.approved'] = `E2E ${locale} Approved`;
+    strings['portal.section.overview'] = `E2E ${locale} Overview`;
+    strings['portal.section.leads'] = `E2E ${locale} Leads`;
+    strings['portal.section.vacancies'] = `E2E ${locale} Specialist requests`;
+    strings['portal.section.finance'] = `E2E ${locale} Rewards`;
+    strings['portal.section.documents'] = `E2E ${locale} Documents`;
+    strings['portal.welcome'] = `E2E ${locale} Welcome`;
+    strings['portal.emptySection'] = `E2E ${locale} No data`;
+    strings['registration.fields.fullName'] = `E2E ${locale} Full name`;
+    strings['registration.fields.email'] = `E2E ${locale} Email`;
+    strings['registration.fields.phone'] = `E2E ${locale} Phone`;
+    strings['registration.fields.country'] = `E2E ${locale} Country`;
+    strings['registration.countries.RU'] = `E2E ${locale} Russia`;
+    strings['registration.countries.KZ'] = `E2E ${locale} Kazakhstan`;
+    strings['registration.fields.region'] = `E2E ${locale} Region`;
+  }
+
   return {
     strings,
     offers,
     privacyNoticeVersion: 'e2e-1',
     privacyNoticeTitle: 'Тестовое согласие на обработку персональных данных',
     privacyNoticeBody: 'Искусственный текст согласия для автоматизированной проверки. Не содержит персональных данных и не предназначен для реального использования.',
-    logoAssetKey: 'simbirsoft',
+    logoAssetKey: locale === 'KZ' ? '17soft' : 'simbirsoft',
   };
 }
