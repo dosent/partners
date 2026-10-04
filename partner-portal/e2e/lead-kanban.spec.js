@@ -26,6 +26,7 @@ async function applicationIds(request) {
 async function registerAndApprovePartner(browser, staffPage, partner) {
   const previousIds = await applicationIds(staffPage.context().request);
   const context = await browser.newContext({ baseURL: E2E_BASE_URL });
+  let approvedContext;
   const page = await context.newPage();
   try {
     await page.goto('/');
@@ -62,11 +63,14 @@ async function registerAndApprovePartner(browser, staffPage, partner) {
     await expect(staffPage.getByRole('heading', { name: 'Физическое лицо' })).toBeVisible();
     await staffPage.getByRole('button', { name: 'Одобрить' }).click();
     await expect(staffPage.getByRole('status')).toContainText('Решение сохранено');
-    await page.goto('/');
-    await completePartnerOAuth(page, partner.subject);
-    await expect(page.getByRole('navigation', { name: 'Партнёрский портал' })).toBeVisible();
-    return { context, page };
+    approvedContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+    const approvedPage = await approvedContext.newPage();
+    await completePartnerOAuth(approvedPage, partner.subject);
+    await expect(approvedPage.getByRole('navigation', { name: 'Партнёрский портал' })).toBeVisible();
+    await context.close();
+    return { context: approvedContext, page: approvedPage };
   } catch (error) {
+    await approvedContext?.close().catch(() => {});
     await context.close().catch(() => {});
     throw error;
   }

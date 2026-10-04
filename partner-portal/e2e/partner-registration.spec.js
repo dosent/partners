@@ -140,15 +140,20 @@ test('staff approval makes the partner portal available without demo data', asyn
     });
     const approvedPartnerPage = await partnerContext.newPage();
     let servedLegacyRussianContent = false;
+    let serveLegacyRussianContent = true;
     await approvedPartnerPage.route('**/api/v1/public/registration-content/RU', async route => {
+      if (!serveLegacyRussianContent) {
+        await route.continue();
+        return;
+      }
       const response = await route.fetch();
       const content = await response.json();
       for (const key of Object.keys(content.strings ?? {})) {
         if (key.startsWith('portal.profile.')) delete content.strings[key];
       }
       expect(Object.keys(content.strings)).toHaveLength(50);
-      servedLegacyRussianContent = true;
       await route.fulfill({ response, body: JSON.stringify(content) });
+      servedLegacyRussianContent = true;
     });
     let releaseProfileRequest;
     const profileRequestGate = new Promise(resolve => { releaseProfileRequest = resolve; });
@@ -164,7 +169,7 @@ test('staff approval makes the partner portal available without demo data', asyn
     await expect(approvedPartnerPage.getByText('Загружаем профиль…')).toBeVisible();
     releaseProfileRequest();
     await expect(approvedPartnerPage.getByText(partner.fullName)).toBeVisible();
-    await approvedPartnerPage.unroute('**/api/v1/public/registration-content/RU');
+    serveLegacyRussianContent = false;
     await approvedPartnerPage.unroute('**/api/v1/partners/me');
     await approvedPartnerPage.getByRole('button', { name: 'Обзор' }).click();
     await expect(approvedPartnerPage.getByRole('heading', { name: 'Обзор' })).toBeVisible();
