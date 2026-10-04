@@ -38,5 +38,5 @@ export function StaffLoginPage({ onAuthenticated }) {
 }
 
 export function StaffFrame({ children }) {
-  return <div className="staff-app"><a className="staff-brand" href="/staff/login"><img src="/assets/logo.svg" alt="SimbirSoft"/><span>Партнёрский портал</span></a><main className="staff-main">{children}</main><footer className="staff-footer">Корпоративный доступ SimbirSoft</footer></div>;
+  return <div className="staff-app"><a className="staff-brand" href="/"><img src="/assets/logo.svg" alt="SimbirSoft"/><span>Партнёрский портал</span></a><main className="staff-main">{children}</main><footer className="staff-footer">Корпоративный доступ SimbirSoft</footer></div>;
 }

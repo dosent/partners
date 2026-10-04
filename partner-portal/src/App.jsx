@@ -75,7 +75,7 @@ function PartnerPortalEntry({landingRoute=false}){
  if(access==='checking')return <div className="registration-state" role="status" aria-busy="true"/>;
  if(accessError)return <section className="registration-state" role="alert"><p>Не удалось проверить статус заявки.</p><button className="secondary" onClick={()=>window.location.reload()}>Повторить</button></section>;
  if(access==='approved')return <ApprovedPartnerPortal/>;
- if(landingRoute&&!hasPartnerSession)return <PublicLandingPage onRegister={()=>window.location.assign('/registration')} onLogin={()=>window.location.assign('/api/v1/auth/yandex/start')}/>;
+ if(landingRoute&&!hasPartnerSession)return <PublicLandingPage onRegister={()=>window.location.assign('/registration')} onLogin={()=>window.location.assign('/registration')}/>;
  return <PartnerRegistrationPage/>;
 }
 
