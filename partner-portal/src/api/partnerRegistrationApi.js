@@ -1,3 +1,5 @@
+import { enrichLegacyRussianRegistrationContent } from '../registration/partnerProfileContentDefaults.js';
+
 const API = '/api/v1';
 
 async function decode(response) {
@@ -30,7 +32,7 @@ export const getPartnerSession = () => fetch(`${API}/auth/yandex/session`, { cre
 
 export const getRegistrationContent = locale => fetch(
   `${API}/public/registration-content/${encodeURIComponent(locale)}`, { credentials: 'include' },
-).then(decode);
+).then(decode).then(content => enrichLegacyRussianRegistrationContent(content, locale));
 
 export const getMyPartnerApplication = () => fetch(
   `${API}/partner-applications/me`, { credentials: 'include' },
