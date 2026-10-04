@@ -11,7 +11,8 @@
 - [x] 2.1 Настроить LDAP параметры `LDAP_URL`, `LDAP_USERS_DN`, `LDAP_CA_CERT_FILE` заданными значениями; DN формировать из escaped `uid` и users DN.
 - [x] 2.2 Проверять LDAPS server certificate пользовательским CA `/app/certs/simbirsoft-ca.crt`; сертификат монтировать read-only снаружи, без включения в Git/image и без insecure fallback.
 - [x] 2.3 Удалить зависимость выдачи ролей от LDAP group mapping; после bind загружать роли из внутренней RBAC, а при пустом назначении возвращать `200 ACCESS_PENDING` и создавать ограниченную сессию.
-- [ ] 2.4 Проверить корректный/ошибочный bind, неверный/недоступный CA, неизвестного LDAP-пользователя и успешный вход `ivan.neshin` с bootstrap role.
+- [x] 2.4 Проверить LDAPS TLS trust: соединение с доверенным CA, отказ для недоверенного CA, несовпадающего hostname и отсутствующего/некорректного CA.
+- [ ] 2.5 Проверить корректный/ошибочный bind, неизвестного LDAP-пользователя и успешный вход `ivan.neshin` с bootstrap role.
 
 ## 3. Staff access UI
 
