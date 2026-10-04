@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-partner-lead-attachments
+      author: codex
+      changes:
+        - createTable:
+            tableName: partner_lead_attachment
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: lead_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_partner_lead_attachment_lead, references: partner_lead(id), onDelete: CASCADE } }
+              - column: { name: owner_profile_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_partner_lead_attachment_profile, references: partner_profile(id) } }
+              - column: { name: file_name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: content_type, type: varchar(127), constraints: { nullable: false } }
+              - column: { name: size_bytes, type: bigint, constraints: { nullable: false } }
+              - column: { name: sha256, type: varchar(64), constraints: { nullable: false } }
+              - column: { name: object_key, type: varchar(512), constraints: { nullable: false, unique: true } }
+              - column: { name: status, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - createIndex:
+            tableName: partner_lead_attachment
+            indexName: idx_partner_lead_attachment_lead_created
+            columns:
+              - column: { name: lead_id }
+              - column: { name: created_at }

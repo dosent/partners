@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-partner-leads
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: partner_lead
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: owner_profile_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_partner_lead_profile, references: partner_profile(id) } }
+              - column: { name: number, type: varchar(32), constraints: { nullable: false, unique: true } }
+              - column: { name: company_name, type: varchar(250), constraints: { nullable: false } }
+              - column: { name: domain_or_tax_id, type: varchar(255) }
+              - column: { name: request_summary, type: varchar(500), constraints: { nullable: false } }
+              - column: { name: budget_amount, type: "numeric(16,2)" }
+              - column: { name: budget_currency, type: varchar(3) }
+              - column: { name: planned_start_at, type: timestamp with time zone }
+              - column: { name: decision_maker_name, type: varchar(200) }
+              - column: { name: decision_maker_email, type: varchar(254) }
+              - column: { name: description, type: varchar(10000), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - createIndex:
+            tableName: partner_lead
+            indexName: idx_partner_lead_owner_status_updated
+            columns:
+              - column: { name: owner_profile_id }
+              - column: { name: status }
+              - column: { name: updated_at }
+              - column: { name: id }
+        - createTable:
+            tableName: partner_lead_status_history
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: lead_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_partner_lead_history_lead, references: partner_lead(id), onDelete: CASCADE } }
+              - column: { name: status, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: changed_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: changed_by, type: varchar(255), constraints: { nullable: false } }
+        - createTable:
+            tableName: partner_lead_message
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: lead_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_partner_lead_message_lead, references: partner_lead(id), onDelete: CASCADE } }
+              - column: { name: author_type, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: body, type: varchar(5000), constraints: { nullable: false } }
+              - column: { name: internal, type: boolean, defaultValueBoolean: false, constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - createIndex:
+            tableName: partner_lead_message
+            indexName: idx_partner_lead_message_visible_order
+            columns:
+              - column: { name: lead_id }
+              - column: { name: internal }
+              - column: { name: created_at }

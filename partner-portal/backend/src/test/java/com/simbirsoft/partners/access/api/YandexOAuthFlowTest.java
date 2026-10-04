@@ -30,6 +30,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.core.context.SecurityContext;
@@ -44,6 +45,7 @@ import org.springframework.web.util.UriComponentsBuilder;
         "partners.auth.yandex.client-secret=test-client-secret",
         "partners.auth.yandex.redirect-uri=http://localhost/api/v1/auth/yandex/callback"
 })
+@ActiveProfiles("auth-test")
 @AutoConfigureMockMvc
 class YandexOAuthFlowTest {
     @Autowired

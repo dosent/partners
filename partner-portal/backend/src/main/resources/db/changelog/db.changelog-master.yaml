@@ -189,3 +189,12 @@ databaseChangeLog:
   - include:
       file: 008-partner-profile-settings.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 009-partner-leads.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 010-partner-lead-status-version.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 011-partner-lead-attachments.yaml
+      relativeToChangelogFile: true
