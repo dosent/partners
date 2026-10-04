@@ -116,6 +116,7 @@ test('staff approval makes the partner portal available without demo data', asyn
   await publishContentOutsidePartnerSession(page);
   const { staffContext, staffPage } = await prepareIsolatedStaffAccess(page);
   let partnerContext;
+  let unrelatedPartnerContext;
   try {
     const previousIds = await manualReviewIds(staffContext.request);
     const partner = syntheticPartnerData();
@@ -141,12 +142,48 @@ test('staff approval makes the partner portal available without demo data', asyn
     await expect(approvedPartnerPage.getByRole('navigation', { name: 'Партнёрский портал' })).toBeVisible();
     await expect(approvedPartnerPage.getByText('Добро пожаловать в партнёрский портал.')).toBeVisible();
     await expect(approvedPartnerPage.getByText('Демонстрационный аккаунт')).toHaveCount(0);
+
+    const profileResponse = await partnerContext.request.get('/api/v1/partners/me');
+    expect(profileResponse.status()).toBe(200);
+    const profile = await profileResponse.json();
+    expect(profile).toMatchObject({
+      fullName: partner.fullName,
+      email: partner.email,
+      phone: partner.phone,
+      countryCode: 'RU',
+      region: partner.region,
+      partnerType: 'INDIVIDUAL',
+    });
+    expect(profile).not.toHaveProperty('taxIdentifier');
+    expect(profile).not.toHaveProperty('inn');
+
+    await approvedPartnerPage.getByRole('button', { name: 'Профиль' }).click();
+    await expect(approvedPartnerPage.getByRole('heading', { name: 'Профиль' })).toBeVisible();
+    await expect(approvedPartnerPage.getByText(partner.fullName)).toBeVisible();
+    await expect(approvedPartnerPage.getByText(partner.email)).toBeVisible();
+
+    const anonymousContext = await page.context().browser().newContext({ baseURL: E2E_BASE_URL });
+    try {
+      const anonymousResponse = await anonymousContext.request.get('/api/v1/partners/me');
+      expect(anonymousResponse.status()).toBe(401);
+    } finally {
+      await anonymousContext.close();
+    }
+
+    unrelatedPartnerContext = await page.context().browser().newContext({ baseURL: E2E_BASE_URL });
+    const unrelatedPartnerPage = await unrelatedPartnerContext.newPage();
+    await loginAsPartner(unrelatedPartnerPage, `unrelated-${partner.id}`);
+    const unrelatedProfileResponse = await unrelatedPartnerContext.request.get('/api/v1/partners/me');
+    expect(unrelatedProfileResponse.status()).toBe(404);
+    expect(await unrelatedProfileResponse.text()).not.toContain(partner.email);
+
     await approvedPartnerPage.getByRole('button', { name: 'Мои лиды' }).click();
     await expect(approvedPartnerPage.getByText('Здесь пока нет данных.')).toBeVisible();
     await expect(approvedPartnerPage.getByText('Демонстрационный аккаунт')).toHaveCount(0);
   } finally {
     await staffContext.close();
     if (partnerContext) await partnerContext.close();
+    if (unrelatedPartnerContext) await unrelatedPartnerContext.close();
   }
 });
 

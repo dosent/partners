@@ -20,6 +20,8 @@ import com.simbirsoft.partners.access.application.StaffRoleGrantStore;
 import com.simbirsoft.partners.access.infrastructure.StaffRoleGrantRepository;
 import com.simbirsoft.partners.access.infrastructure.StaffRoleAuditRepository;
 import com.simbirsoft.partners.localization.application.RegistrationContentStore;
+import com.simbirsoft.partners.partner.application.ApprovedPartnerProfileSource;
+import com.simbirsoft.partners.partner.application.PartnerProfileStore;
 import com.simbirsoft.partners.partner.infrastructure.PartnerApplicationStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +65,12 @@ class YandexOAuthFlowTest {
 
     @MockitoBean
     private PartnerApplicationStore partnerApplicationStore;
+
+    @MockitoBean(name = "jpaPartnerProfileStore")
+    private PartnerProfileStore partnerProfileStore;
+
+    @MockitoBean(name = "jpaApprovedPartnerProfileSource")
+    private ApprovedPartnerProfileSource approvedPartnerProfileSource;
 
     @Autowired
     private Environment environment;

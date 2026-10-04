@@ -23,14 +23,16 @@ public class PartnerApplicationModerationService {
     private final PartnerApplicationQueryRepository queries;
     private final RegistrationDataProtector protector;
     private final StaffRoleLookup staffRoles;
+    private final PartnerProfileService partnerProfiles;
 
     public PartnerApplicationModerationService(PartnerApplicationStore store,
             PartnerApplicationQueryRepository queries, RegistrationDataProtector protector,
-            StaffRoleLookup staffRoles) {
+            StaffRoleLookup staffRoles, PartnerProfileService partnerProfiles) {
         this.store = store;
         this.queries = queries;
         this.protector = protector;
         this.staffRoles = staffRoles;
+        this.partnerProfiles = partnerProfiles;
     }
 
     @Transactional(readOnly = true)
@@ -84,6 +86,7 @@ public class PartnerApplicationModerationService {
         } catch (OptimisticLockingFailureException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Application was already decided");
         }
+        if (status == PartnerApplicationStatus.APPROVED) partnerProfiles.activate(decided);
         return decided;
     }
 

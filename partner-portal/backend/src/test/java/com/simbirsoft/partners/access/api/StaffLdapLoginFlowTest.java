@@ -18,6 +18,8 @@ import com.simbirsoft.partners.access.application.StaffIdentity;
 import com.simbirsoft.partners.access.application.StaffRole;
 import com.simbirsoft.partners.access.application.StaffRoleGrantStore;
 import com.simbirsoft.partners.access.infrastructure.LdapConnectionFactory;
+import com.simbirsoft.partners.partner.application.ApprovedPartnerProfileSource;
+import com.simbirsoft.partners.partner.application.PartnerProfileStore;
 import com.simbirsoft.partners.localization.application.RegistrationContentStore;
 import com.simbirsoft.partners.partner.infrastructure.PartnerApplicationStore;
 import java.util.Map;
@@ -51,6 +53,8 @@ class StaffLdapLoginFlowTest {
     @MockitoBean(name = "jndiLdapConnectionFactory") private LdapConnectionFactory ldapConnectionFactory;
     @MockitoBean(name = "jpaRegistrationContentStore") private RegistrationContentStore registrationContentStore;
     @MockitoBean private PartnerApplicationStore partnerApplicationStore;
+    @MockitoBean(name = "jpaPartnerProfileStore") private PartnerProfileStore partnerProfileStore;
+    @MockitoBean(name = "jpaApprovedPartnerProfileSource") private ApprovedPartnerProfileSource approvedPartnerProfileSource;
 
     @Test
     void csrfBootstrapExposesTheHeaderNameForBrowserLogin() throws Exception {
