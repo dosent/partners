@@ -23,7 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Profile("!auth-test")
-public class LeadService {
+public class LeadService implements LeadPartnerContextLookup {
     private final LeadStore leads;
     private final LeadPartnerIdentity partners;
 
@@ -54,6 +54,13 @@ public class LeadService {
     }
 
     public UUID profileId(PartnerPrincipal principal) { return owner(principal); }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<LeadContext> findOwnedContext(UUID leadId, UUID partnerProfileId) {
+        return leads.findOwned(leadId, partnerProfileId)
+                .map(lead -> new LeadContext(lead.id(), lead.companyName(), lead.requestSummary()));
+    }
 
     @Transactional(readOnly = true)
     public Board board(PartnerPrincipal principal, String query, Instant from, Instant to, LeadStatus status,
