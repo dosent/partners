@@ -6,9 +6,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Schema(description = "Созданный комментарий лида с признаком внутренней видимости")
-public record AdminLeadMessageResponse(UUID id, String authorType, String body, boolean internal, Instant createdAt) {
+public record AdminLeadMessageResponse(UUID id, String authorType, String authorName, String body,
+        boolean internal, Instant createdAt) {
     static AdminLeadMessageResponse from(LeadMessage message) {
-        return new AdminLeadMessageResponse(message.id(), message.authorType(), message.body(),
+        return new AdminLeadMessageResponse(message.id(), message.authorType(), message.authorName(), message.body(),
                 message.internal(), message.createdAt());
     }
 }

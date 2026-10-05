@@ -273,7 +273,15 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await staffPage.getByLabel('Внутренний комментарий').check();
     await staffPage.getByLabel('Комментарий партнёру').fill(internalNote);
     await staffPage.getByRole('button', { name: 'Отправить комментарий' }).click();
+    await expect(staffPage.getByRole('status')).toContainText('Внутренний комментарий сохранён');
     await expect(staffPage.getByText(internalNote)).toBeVisible();
+    const staffLeadResponse = await staffContext.request.get(`/api/v1/admin/leads/${createdLead.id}`);
+    expect(staffLeadResponse.ok()).toBeTruthy();
+    const staffLead = await staffLeadResponse.json();
+    expect(staffLead.messages, JSON.stringify(staffLead.messages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ body: publicReply, authorName: 'ivan.neshin', internal: false }),
+      expect.objectContaining({ body: internalNote, authorName: 'ivan.neshin', internal: true }),
+    ]));
     await staffPage.setViewportSize({ width: 390, height: 844 });
     await expect(staffPage.getByRole('heading', { name: primaryLead.companyName })).toBeVisible();
     expect(await staffPage.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

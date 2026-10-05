@@ -22,10 +22,10 @@ public record AdminLeadDetailResponse(UUID id, String number, String companyName
                 lead.createdAt(), lead.updatedAt(), detail.history().stream()
                         .map(event -> new HistoryItem(event.status().name(), event.changedAt())).toList(),
                 detail.messages().stream().map(message -> new Message(message.id(), message.authorType(),
-                        message.body(), message.internal(), message.createdAt())).toList());
+                        message.authorName(), message.body(), message.internal(), message.createdAt())).toList());
     }
 
     public record HistoryItem(String status, Instant changedAt) { }
     @Schema(description = "Сообщение с признаком внутренней видимости")
-    public record Message(UUID id, String authorType, String body, boolean internal, Instant createdAt) { }
+    public record Message(UUID id, String authorType, String authorName, String body, boolean internal, Instant createdAt) { }
 }

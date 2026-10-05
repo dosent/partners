@@ -123,7 +123,7 @@ export function StaffLeadManagementPage({ session, onBack, onLogout }) {
         <section className="staff-detail-section"><h3>Комментарии</h3>
           {detail.messages?.length ? <ol className="staff-lead-messages">{detail.messages.map(item =>
             <li className={item.internal ? 'is-internal' : ''} key={item.id}>
-              <div><strong>{item.authorType === 'STAFF' ? 'Сотрудник' : 'Партнёр'}</strong>
+              <div><strong>{item.authorName || (item.authorType === 'STAFF' ? 'Сотрудник' : 'Партнёр')}</strong>
                 <span>{item.internal ? 'Внутренний комментарий' : 'Видно партнёру'}</span><time>{dateTime(item.createdAt)}</time></div>
               <p>{item.body}</p>
             </li>)}</ol> : <p className="staff-lead-empty">Комментариев пока нет.</p>}

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-partner-lead-comment-author
+      author: codex
+      changes:
+        - addColumn:
+            tableName: partner_lead_message
+            columns:
+              - column:
+                  name: author_name
+                  type: varchar(160)

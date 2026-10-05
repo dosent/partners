@@ -89,6 +89,7 @@ class JpaLeadStore implements LeadStore {
         record.id = UUID.randomUUID();
         record.leadId = leadId;
         record.authorType = "STAFF";
+        record.authorName = username;
         record.body = body;
         record.createdAt = createdAt;
         record.internal = internal;

@@ -13,9 +13,10 @@ class LeadMessageRecord {
     @Id UUID id;
     @Column(name="lead_id",nullable=false) UUID leadId;
     @Column(name="author_type",nullable=false,length=16) String authorType;
+    @Column(name="author_name",length=160) String authorName;
     @Column(nullable=false,length=5000) String body;
     @Column(nullable=false) boolean internal;
     @Column(name="created_at",nullable=false) Instant createdAt;
     protected LeadMessageRecord() { }
-    LeadMessage toDomain() { return new LeadMessage(id,leadId,authorType,body,internal,createdAt); }
+    LeadMessage toDomain() { return new LeadMessage(id,leadId,authorType,body,internal,createdAt,authorName); }
 }
