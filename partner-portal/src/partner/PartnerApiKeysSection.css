@@ -1,0 +1,15 @@
+.partner-api-keys { display: grid; gap: 1rem; max-width: 58rem; }
+.partner-api-keys h2, .partner-api-keys h3, .partner-api-keys p { margin: 0; }
+.partner-api-key-create { display: grid; grid-template-columns: minmax(12rem, 1fr) auto; gap: .65rem 1rem; align-items: end; }
+.partner-api-key-create label { grid-column: 1 / -1; }
+.partner-api-key-create input { min-width: 0; padding: .75rem; border: 1px solid #b8c4d1; border-radius: .45rem; font: inherit; }
+.partner-api-key-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+.partner-api-key-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; padding: 1rem; border: 1px solid #dce3ea; border-radius: .6rem; }
+.partner-api-key-list li > div { display: grid; gap: .35rem; min-width: 0; }
+.partner-api-key-list code, .partner-api-key-secret code { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.partner-api-key-list small { color: #526171; }
+.partner-api-key-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.partner-api-key-secret { display: grid; gap: .8rem; padding: 1rem; border: 2px solid #315b91; border-radius: .65rem; background: #f4f8fd; }
+.partner-api-key-secret code { padding: .8rem; background: white; border-radius: .35rem; user-select: all; }
+.partner-api-key-error { color: #a3212b; }
+@media (max-width: 600px) { .partner-api-key-create { grid-template-columns: 1fr; } .partner-api-key-create label { grid-column: auto; } .partner-api-key-create button, .partner-api-key-list li > button { width: 100%; min-height: 2.75rem; } }
