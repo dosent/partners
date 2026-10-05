@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import com.simbirsoft.partners.shared.api.FieldValidationException;
 
 @RestController
 @Profile("!auth-test")
@@ -43,7 +44,19 @@ public class PartnerStaffingRequestController {
     public StaffingRequestResponse create(@AuthenticationPrincipal PartnerPrincipal principal,
             @RequestHeader("Idempotency-Key") UUID key, @Valid @RequestBody CreateStaffingRequestRequest request) {
         try { return StaffingRequestResponse.from(service.create(principal, key, request.command())); }
-        catch (IllegalArgumentException invalid) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage()); }
+        catch (IllegalArgumentException invalid) {
+            String message = invalid.getMessage() == null ? "" : invalid.getMessage().toLowerCase(java.util.Locale.ROOT);
+            String field = message.contains("taskdescription") ? "role.taskDescription"
+                    : message.contains("preferred") ? "role.preferredSkills"
+                    : message.contains("grade") ? "role.grade"
+                    : message.contains("required skills") || message.contains("skill") ? "role.requiredSkills"
+                    : message.contains("headcount") ? "role.headcount"
+                    : message.contains("hours") ? "work.hoursPerWeek"
+                    : message.contains("location") ? "work.location"
+                    : message.contains("date") ? "work.desiredStartDate"
+                    : message.contains("language") ? "selection.languageLevel" : "role.title";
+            throw new FieldValidationException("VALIDATION_ERROR", field, "Invalid value");
+        }
     }
 
     @GetMapping
@@ -56,7 +69,8 @@ public class PartnerStaffingRequestController {
     @GetMapping("/{requestId}")
     @Operation(summary="Получить свою заявку")
     public StaffingRequestResponse get(@AuthenticationPrincipal PartnerPrincipal principal, @PathVariable UUID requestId) {
-        return StaffingRequestResponse.from(service.get(principal, requestId));
+        var request = service.get(principal, requestId);
+        return StaffingRequestResponse.from(request, attachments.list(service.ownerId(principal), requestId));
     }
 
     @PostMapping(value="/{requestId}/attachments", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)

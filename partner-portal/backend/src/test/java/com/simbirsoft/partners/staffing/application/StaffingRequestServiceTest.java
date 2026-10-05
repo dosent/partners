@@ -70,6 +70,21 @@ class StaffingRequestServiceTest {
                 .hasMessageContaining("already used");
     }
 
+    @Test
+    void returnsTheWinningRequestWhenConcurrentCreationWinsTheUniqueKeyRace() {
+        PartnerPrincipal principal = new PartnerPrincipal("yandex", "partner-1");
+        UUID owner = UUID.randomUUID(), key = UUID.randomUUID(), lead = UUID.randomUUID();
+        var winner = sample(owner, key, lead);
+        var profile = mock(ProfileDetails.class);
+        when(profile.id()).thenReturn(owner);
+        when(profiles.current(principal)).thenReturn(profile);
+        when(requests.findByIdempotencyKey(owner, key)).thenReturn(Optional.empty(), Optional.of(winner));
+        when(leads.findOwnedContext(lead, owner)).thenReturn(Optional.of(new LeadPartnerContextLookup.LeadContext(lead, "Example", "Team")));
+        when(requests.save(any())).thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
+
+        assertThat(service.create(principal, key, command(lead))).isEqualTo(winner);
+    }
+
     private static StaffingRequestService.CreateCommand command(UUID lead) {
         return new StaffingRequestService.CreateCommand(lead,
                 new StaffingRequest.RoleRequirements("Backend developer", 1, "Middle+", java.util.List.of("Java"),
@@ -79,7 +94,10 @@ class StaffingRequestServiceTest {
                 new StaffingRequest.SelectionRequirements(null, null, true, false, true));
     }
     private static StaffingRequest sample(UUID owner, UUID key) {
-        return StaffingRequest.create(UUID.randomUUID(), owner, UUID.randomUUID(), "SR-0001", key,
+        return sample(owner, key, UUID.randomUUID());
+    }
+    private static StaffingRequest sample(UUID owner, UUID key, UUID lead) {
+        return StaffingRequest.create(UUID.randomUUID(), owner, lead, "SR-0001", key,
                 new StaffingRequest.RoleRequirements("Backend developer", 1, "Middle+", java.util.List.of("Java"), java.util.List.of(), "Build services"),
                 new StaffingRequest.WorkConditions(40, StaffingRequest.WorkMode.REMOTE, "Remote", true,
                         LocalDate.of(2026, 11, 1), false),

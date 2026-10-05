@@ -162,14 +162,21 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await partnerPage.getByLabel(/Количество специалистов/).fill('2');
     await partnerPage.getByLabel('Уровень').selectOption('Middle+');
     await partnerPage.getByLabel(/Обязательные навыки и стек/).fill('Java, Spring Boot');
+    await partnerPage.locator('input[type="file"]').first().setInputFiles({ name: 'brief.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\nbrief') });
     await partnerPage.locator('input[type="file"]').first().setInputFiles({ name: 'invalid.png', mimeType: 'image/png', buffer: Buffer.from('not a supported attachment') });
     await expect(partnerPage.getByRole('alert')).toContainText('PDF или DOCX');
     await expect(partnerPage.getByLabel(/Обязательные навыки и стек/)).toHaveValue('Java, Spring Boot');
+    await partnerPage.getByRole('button', { name: 'Продолжить без файла', exact: true }).click();
+    await partnerPage.locator('input[type="file"]').nth(1).setInputFiles({ name: 'cv-example.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\ncv example') });
     await partnerPage.getByLabel(/Задачи и ожидания/).fill('Разработка и развитие сервисов проекта.');
     await partnerPage.getByLabel(/Загрузка, часов в неделю/).fill('40');
     await partnerPage.getByLabel('Формат работы').selectOption('REMOTE');
     await partnerPage.getByLabel('Город \/ страна').fill('Удалённо');
     await partnerPage.getByLabel('Ожидаемая дата подключения').fill('2026-12-15');
+    await partnerPage.getByLabel(/Обязательные навыки и стек/).fill(' , , ');
+    await partnerPage.getByRole('button', { name: 'Отправить заявку' }).click();
+    await expect(partnerPage.getByText('Проверьте это поле.')).toBeVisible();
+    await partnerPage.getByLabel(/Обязательные навыки и стек/).fill('Java, Spring Boot');
     await partnerPage.getByRole('button', { name: 'Отправить заявку' }).click();
     await expect(partnerPage.getByText(/^SR-[A-F0-9]{8}$/)).toBeVisible();
     await expect(partnerPage.getByText('Заявка сохранена')).toBeVisible();
@@ -183,6 +190,13 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     expect(requestItems[0].role.requiredSkills).toEqual(['Java', 'Spring Boot']);
     expect(requestItems[0].status).toBe('NEW');
     const staffingRequestId = requestItems[0].id;
+    const staffingDetailResponse = await approvedPartner.context.request.get(`/api/v1/partner/staffing-requests/${staffingRequestId}`);
+    expect(staffingDetailResponse.ok()).toBeTruthy();
+    const staffingDetail = await staffingDetailResponse.json();
+    expect(staffingDetail.attachments.map(file => file.kind)).toEqual(['cv']);
+    const staffingFile = await approvedPartner.context.request.get(`/api/v1/partner/staffing-requests/${staffingRequestId}/attachments/${staffingDetail.attachments[0].id}`);
+    expect(staffingFile.ok()).toBeTruthy();
+    expect(await staffingFile.body()).toEqual(Buffer.from('%PDF-1.7\ncv example'));
 
     await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
       .getByRole('button', { name: 'Мои лиды' }).click();
