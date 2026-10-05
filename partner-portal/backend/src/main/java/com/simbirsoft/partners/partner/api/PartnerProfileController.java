@@ -2,6 +2,8 @@ package com.simbirsoft.partners.partner.api;
 
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
 import com.simbirsoft.partners.partner.application.PartnerProfileService;
+import com.simbirsoft.partners.shared.api.McpTool;
+import com.simbirsoft.partners.shared.api.McpToolBehavior;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -22,6 +24,7 @@ public class PartnerProfileController {
 
     public PartnerProfileController(PartnerProfileService service) { this.service = service; }
 
+    @McpTool(name="partner_profile_get", description="Get the authenticated partner profile and settings", behavior=McpToolBehavior.READ_ONLY)
     @GetMapping("/me")
     @Operation(summary = "Получить собственный профиль партнёра")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Профиль текущего партнёра"),
@@ -31,6 +34,7 @@ public class PartnerProfileController {
         return PartnerProfileResponse.from(service.current(owner));
     }
 
+    @McpTool(name="partner_profile_update_settings", description="Update the authenticated partner contact details and preferences", behavior=McpToolBehavior.MUTATING)
     @PutMapping("/me/settings")
     @Operation(summary = "Изменить контактные данные и настройки собственного профиля")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Профиль изменён"),

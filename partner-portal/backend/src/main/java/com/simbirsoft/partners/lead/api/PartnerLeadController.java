@@ -3,6 +3,8 @@ package com.simbirsoft.partners.lead.api;
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
 import com.simbirsoft.partners.lead.application.LeadAttachmentPort;
 import com.simbirsoft.partners.lead.application.LeadService;
+import com.simbirsoft.partners.shared.api.McpTool;
+import com.simbirsoft.partners.shared.api.McpToolBehavior;
 import com.simbirsoft.partners.lead.domain.LeadMessage;
 import com.simbirsoft.partners.lead.domain.LeadStatus;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +41,7 @@ public class PartnerLeadController {
     private final LeadAttachmentPort attachments;
     public PartnerLeadController(LeadService service, LeadAttachmentPort attachments) { this.service=service; this.attachments=attachments; }
 
+    @McpTool(name="partner_leads_board", description="List the authenticated partner leads by status", behavior=McpToolBehavior.READ_ONLY)
     @GetMapping("/board")
     @Operation(summary="Загрузить партнёрскую Kanban-доску")
     public LeadBoardResponse board(@AuthenticationPrincipal PartnerPrincipal principal,
@@ -54,6 +57,7 @@ public class PartnerLeadController {
         return LeadBoardResponse.from(service.board(principal,query,updatedFrom,updatedTo,status,limitPerColumn,java.util.Arrays.asList(cursors)));
     }
 
+    @McpTool(name="partner_lead_create", description="Create a partner lead from structured fields", behavior=McpToolBehavior.MUTATING)
     @PostMapping
     @Operation(summary="Создать партнёрский лид")
     public LeadDetailResponse create(@AuthenticationPrincipal PartnerPrincipal principal,@Valid @RequestBody CreateLeadRequest request) {
@@ -61,6 +65,7 @@ public class PartnerLeadController {
         return LeadDetailResponse.from(lead,service.statusHistory(principal,lead.id()),java.util.List.of());
     }
 
+    @McpTool(name="partner_lead_create_with_attachment", description="Create a partner lead and attach a supported document", behavior=McpToolBehavior.MUTATING)
     @PostMapping(consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary="Создать партнёрский лид с проверяемым вложением")
     public LeadDetailResponse createWithAttachment(@AuthenticationPrincipal PartnerPrincipal principal,
@@ -78,6 +83,7 @@ public class PartnerLeadController {
         return LeadDetailResponse.from(lead, service.statusHistory(principal, lead.id()), service.messages(principal, lead.id()), files);
     }
 
+    @McpTool(name="partner_lead_get", description="Get one owned partner lead with its history", behavior=McpToolBehavior.READ_ONLY)
     @GetMapping("/{leadId}")
     @Operation(summary="Получить детали собственного лида")
     public LeadDetailResponse detail(@AuthenticationPrincipal PartnerPrincipal principal,@PathVariable UUID leadId) {
@@ -86,6 +92,7 @@ public class PartnerLeadController {
         return LeadDetailResponse.from(lead,service.statusHistory(principal,leadId),service.messages(principal,leadId),files);
     }
 
+    @McpTool(name="partner_lead_attachment_download", description="Read an owned partner lead attachment", behavior=McpToolBehavior.READ_ONLY)
     @GetMapping("/{leadId}/attachments/{attachmentId}")
     @Operation(summary="Скачать своё проверенное вложение к лиду")
     public ResponseEntity<byte[]> download(@AuthenticationPrincipal PartnerPrincipal principal,
@@ -98,6 +105,7 @@ public class PartnerLeadController {
                 .header("X-Content-Type-Options", "nosniff").body(file.content());
     }
 
+    @McpTool(name="partner_lead_message", description="Send a message about an owned partner lead", behavior=McpToolBehavior.MUTATING)
     @PostMapping("/{leadId}/messages")
     @Operation(summary="Отправить партнёрское сообщение менеджеру")
     public LeadMessageResponse message(@AuthenticationPrincipal PartnerPrincipal principal,@PathVariable UUID leadId,

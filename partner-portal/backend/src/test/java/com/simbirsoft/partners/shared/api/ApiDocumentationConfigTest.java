@@ -2,6 +2,11 @@ package com.simbirsoft.partners.shared.api;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
+import com.simbirsoft.partners.access.api.PartnerApiKeyController;
+import com.simbirsoft.partners.access.api.PartnerMcpAccessController;
+import com.simbirsoft.partners.lead.api.PartnerLeadController;
+import com.simbirsoft.partners.partner.api.PartnerProfileController;
+import java.util.Arrays;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.media.Content;
@@ -19,6 +24,19 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 class ApiDocumentationConfigTest {
     private final ApiDocumentationConfig config = new ApiDocumentationConfig();
+
+    @Test
+    void partnerToolAllowlistIsExplicitAndExcludesKeyManagementRoutes() {
+        var published = Arrays.stream(PartnerProfileController.class.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(McpTool.class)).map(method -> method.getAnnotation(McpTool.class).name()).toList();
+        assertEquals(java.util.Set.of("partner_profile_get", "partner_profile_update_settings"), java.util.Set.copyOf(published));
+        var leadTools = Arrays.stream(PartnerLeadController.class.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(McpTool.class)).map(method -> method.getAnnotation(McpTool.class).name()).toList();
+        assertEquals(java.util.Set.of("partner_leads_board", "partner_lead_create", "partner_lead_create_with_attachment",
+                "partner_lead_get", "partner_lead_attachment_download", "partner_lead_message"), java.util.Set.copyOf(leadTools));
+        assertFalse(Arrays.stream(PartnerApiKeyController.class.getDeclaredMethods()).anyMatch(method -> method.isAnnotationPresent(McpTool.class)));
+        assertFalse(Arrays.stream(PartnerMcpAccessController.class.getDeclaredMethods()).anyMatch(method -> method.isAnnotationPresent(McpTool.class)));
+    }
 
     @Test
     void documentsV1ApiWithReusableErrorSchema() {
