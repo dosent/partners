@@ -154,7 +154,8 @@ const defaultOffers = {
   LEGAL_ENTITY: { version: '1.0', title: 'Партнёрская оферта для юридического лица' },
 };
 const defaultMetadata = { privacyNoticeVersion: '1.0', privacyNoticeTitle: 'Согласие на обработку персональных данных', logoAssetKey: 'simbirsoft' };
-const emptyValue = () => ({ strings: Object.fromEntries(requiredKeys.map(key => [key, ''])), offers: Object.fromEntries(offerTypes.map(type => [type.id, emptyOffer()])), privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
+const optionalPortalKeys = ['portal.actions.logout', 'portal.actions.loggingOut', 'portal.errors.logout'];
+const emptyValue = () => ({ strings: Object.fromEntries([...requiredKeys, ...optionalPortalKeys].map(key => [key, ''])), offers: Object.fromEntries(offerTypes.map(type => [type.id, emptyOffer()])), privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
 const useDefaultWhenEmpty = (value, fallback) => value == null || (typeof value === 'string' && !value.trim()) ? fallback : value;
 function normalizeDraft(value = {}, locale = 'ru') {
   value ??= {};

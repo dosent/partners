@@ -9,6 +9,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -145,6 +147,39 @@ class YandexOAuthFlowTest {
         mockMvc.perform(get("/api/v1/auth/yandex/session"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void logoutInvalidatesPartnerSession() throws Exception {
+        MvcResult started = mockMvc.perform(get("/api/v1/auth/yandex/start")).andReturn();
+        MockHttpSession session = (MockHttpSession) started.getRequest().getSession(false);
+        given(identityProvider.exchangeAuthorizationCode(eq("logout-code")))
+                .willReturn(new ExternalIdentity("YANDEX", "logout-subject"));
+
+        MvcResult login = mockMvc.perform(get("/api/v1/auth/yandex/callback")
+                        .session(session)
+                        .param("code", "logout-code")
+                        .param("state", stateFrom(started)))
+                .andExpect(status().isSeeOther())
+                .andReturn();
+        MockHttpSession authenticatedSession = (MockHttpSession) login.getRequest().getSession(false);
+
+        mockMvc.perform(post("/api/v1/auth/yandex/logout").session(authenticatedSession))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/auth/yandex/session").session(authenticatedSession))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/auth/yandex/logout").with(csrf()).session(authenticatedSession))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/auth/yandex/session").session(authenticatedSession))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void partnerLogoutRequiresAuthentication() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/yandex/logout").with(csrf()))
+                .andExpect(status().isUnauthorized());
     }
 
     private String stateFrom(MvcResult result) {
