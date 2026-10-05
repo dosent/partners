@@ -79,13 +79,36 @@ public class LeadService {
 
     @Transactional
     public Lead changeStatus(UUID id, LeadStatus nextStatus, StaffPrincipal actor) {
-        if (actor == null || actor.username() == null || actor.username().isBlank())
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Staff session required");
+        requireStaff(actor);
         if (nextStatus == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status is required");
         Lead current = leads.findAny(id).orElseThrow(() -> notFound());
         if (!current.status().canTransitionTo(nextStatus))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Lead status transition is not allowed");
         return leads.changeStatus(id, current.status(), nextStatus, actor.username(), Instant.now());
+    }
+
+    @Transactional(readOnly = true)
+    public LeadStore.StaffPage staffPage(StaffPrincipal actor, LeadStatus status, String query, int page, int size) {
+        requireStaff(actor);
+        if (page < 0 || size < 1 || size > 100 || (query != null && query.length() > 200))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid lead page request");
+        return leads.findStaffPage(status, query, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public StaffDetail staffDetail(StaffPrincipal actor, UUID id) {
+        requireStaff(actor);
+        Lead lead = leads.findAny(id).orElseThrow(LeadService::notFound);
+        return new StaffDetail(lead, leads.statusHistory(id), leads.allMessages(id));
+    }
+
+    @Transactional
+    public LeadMessage sendStaffMessage(StaffPrincipal actor, UUID id, String body, boolean internal) {
+        requireStaff(actor);
+        if (body == null || body.isBlank() || body.trim().length() > 5000)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message is invalid");
+        if (leads.findAny(id).isEmpty()) throw notFound();
+        return leads.addStaffMessage(id, actor.username(), body.trim(), internal, Instant.now());
     }
 
     @Transactional(readOnly = true)
@@ -118,6 +141,10 @@ public class LeadService {
     private UUID owner(PartnerPrincipal principal) {
         if (principal == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Partner session required");
         return partners.profileId(principal);
+    }
+    private static void requireStaff(StaffPrincipal actor) {
+        if (actor == null || actor.username() == null || actor.username().isBlank())
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Staff session required");
     }
     private static ResponseStatusException notFound() { return new ResponseStatusException(HttpStatus.NOT_FOUND, "Lead not found"); }
     private static String blankToNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }
@@ -157,4 +184,5 @@ public class LeadService {
             String budgetCurrency, LocalDate plannedStartAt, String decisionMakerName, String decisionMakerEmail, String description) { }
     public record Column(LeadLane lane, List<LeadStatus> statuses, LeadStatus status, long total, List<Lead> items, String nextCursor) { }
     public record Board(List<Column> columns) { }
+    public record StaffDetail(Lead lead, List<LeadStatusEvent> history, List<LeadMessage> messages) { }
 }

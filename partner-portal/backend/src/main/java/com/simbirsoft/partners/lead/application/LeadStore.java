@@ -18,8 +18,12 @@ public interface LeadStore {
             Instant beforeUpdatedAt, UUID beforeId, int limit);
     long count(UUID ownerProfileId, List<LeadStatus> statuses, String query, Instant updatedFrom, Instant updatedTo);
     List<Lead> findAllOwned(UUID ownerProfileId);
+    StaffPage findStaffPage(LeadStatus status, String query, int page, int size);
     List<LeadMessage> publicMessages(UUID leadId);
+    List<LeadMessage> allMessages(UUID leadId);
     List<LeadStatusEvent> statusHistory(UUID leadId);
     LeadMessage addMessage(UUID leadId, UUID ownerProfileId, String body, Instant createdAt);
+    LeadMessage addStaffMessage(UUID leadId, String username, String body, boolean internal, Instant createdAt);
     record Page(List<Lead> items, boolean hasMore) { }
+    record StaffPage(List<Lead> items, long total, int page, int size) { }
 }

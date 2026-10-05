@@ -56,6 +56,12 @@ class JpaLeadStore implements LeadStore {
                 from == null ? MIN_INSTANT : from, to == null ? MAX_INSTANT : to);
     }
     @Override @Transactional(readOnly=true) public List<Lead> findAllOwned(UUID owner) { return List.of(); }
+    @Override @Transactional(readOnly=true) public StaffPage findStaffPage(LeadStatus status, String query, int page, int size) {
+        String normalized = query == null || query.isBlank() ? "" : query.trim();
+        var records = leads.findStaffPage(status == null ? null : status.name(), normalized, PageRequest.of(page, size));
+        return new StaffPage(records.stream().map(LeadRecord::toDomain).toList(),
+                leads.countStaffMatching(status == null ? null : status.name(), normalized), page, size);
+    }
     @Override @Transactional(readOnly=true) public List<LeadStatusEvent> statusHistory(UUID leadId) {
         return history.findByLeadIdOrderByChangedAtAsc(leadId).stream().map(LeadStatusHistoryRecord::toDomain).toList();
     }
@@ -63,11 +69,30 @@ class JpaLeadStore implements LeadStore {
         return messages.findByLeadIdOrderByCreatedAtAsc(leadId).stream().map(LeadMessageRecord::toDomain)
                 .filter(message -> !message.internal()).toList();
     }
+    @Override @Transactional(readOnly=true) public List<LeadMessage> allMessages(UUID leadId) {
+        return messages.findByLeadIdOrderByCreatedAtAsc(leadId).stream().map(LeadMessageRecord::toDomain).toList();
+    }
     @Override @Transactional public LeadMessage addMessage(UUID leadId,UUID owner,String body,Instant createdAt) {
         if (leads.findByIdAndOwnerProfileId(leadId,owner).isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
         var lead=leads.findByIdAndOwnerProfileId(leadId,owner).orElseThrow();
         lead.updatedAt=createdAt; leads.save(lead);
         var r=new LeadMessageRecord();r.id=UUID.randomUUID();r.leadId=leadId;r.authorType="PARTNER";r.body=body;r.createdAt=createdAt;r.internal=false;
         return messages.saveAndFlush(r).toDomain();
+    }
+    @Override @Transactional public LeadMessage addStaffMessage(UUID leadId, String username, String body,
+            boolean internal, Instant createdAt) {
+        var lead = leads.findForUpdateById(leadId).orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND));
+        lead.updatedAt = createdAt;
+        leads.save(lead);
+        var record = new LeadMessageRecord();
+        record.id = UUID.randomUUID();
+        record.leadId = leadId;
+        record.authorType = "STAFF";
+        record.authorName = username;
+        record.body = body;
+        record.createdAt = createdAt;
+        record.internal = internal;
+        return messages.saveAndFlush(record).toDomain();
     }
 }

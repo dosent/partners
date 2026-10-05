@@ -12,6 +12,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface LeadJpaRepository extends JpaRepository<LeadRecord, UUID> {
+    @Query("select l from LeadRecord l where (:status is null or l.status=:status) "
+        + "and (:query='' or lower(l.companyName) like lower(concat('%',:query,'%')) "
+        + "or lower(l.number) like lower(concat('%',:query,'%')) "
+        + "or lower(l.requestSummary) like lower(concat('%',:query,'%')) "
+        + "or lower(coalesce(l.domainOrTaxId,'')) like lower(concat('%',:query,'%'))) "
+        + "order by l.updatedAt desc,l.id desc")
+    List<LeadRecord> findStaffPage(@Param("status") String status, @Param("query") String query, Pageable pageable);
+    @Query("select count(l) from LeadRecord l where (:status is null or l.status=:status) "
+        + "and (:query='' or lower(l.companyName) like lower(concat('%',:query,'%')) "
+        + "or lower(l.number) like lower(concat('%',:query,'%')) "
+        + "or lower(l.requestSummary) like lower(concat('%',:query,'%')) "
+        + "or lower(coalesce(l.domainOrTaxId,'')) like lower(concat('%',:query,'%')))")
+    long countStaffMatching(@Param("status") String status, @Param("query") String query);
     @Query("select l from LeadRecord l where l.ownerProfileId=:owner and l.status in :statuses "
         + "and (lower(l.companyName) like lower(concat('%',:query,'%')) "
         + "or lower(l.requestSummary) like lower(concat('%',:query,'%')) or lower(coalesce(l.domainOrTaxId,'')) like lower(concat('%',:query,'%'))) "
