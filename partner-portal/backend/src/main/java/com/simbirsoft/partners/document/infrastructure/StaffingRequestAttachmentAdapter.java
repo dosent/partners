@@ -9,7 +9,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
@@ -38,16 +39,31 @@ class StaffingRequestAttachmentAdapter implements StaffingRequestAttachmentPort 
                 prepared.fileName(), prepared.contentType(), key);
         try {
             var previous=attachments.findByRequestIdAndOwnerProfileIdAndKind(requestId, ownerId, kind).orElse(null);
+            String previousObjectKey = previous == null ? null : previous.objectKey;
             if (previous != null) record.id=previous.id;
             record=attachments.saveAndFlush(record);
-            if (previous != null && !previous.objectKey.equals(key)) {
-                try { storage.delete(previous.objectKey); } catch (RuntimeException ignored) { }
+            String newObjectKey = key;
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override public void afterCommit() {
+                        deleteQuietly(previousObjectKey);
+                    }
+                    @Override public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) deleteQuietly(newObjectKey);
+                    }
+                });
+            } else {
+                deleteQuietly(previousObjectKey);
             }
             return new Attachment(record.id, record.kind, record.fileName);
         } catch (RuntimeException failure) {
             try { storage.delete(key); } catch (RuntimeException ignored) { }
             throw failure;
         }
+    }
+    private void deleteQuietly(String objectKey) {
+        if (objectKey == null) return;
+        try { storage.delete(objectKey); } catch (RuntimeException ignored) { }
     }
     @Override @Transactional(readOnly=true)
     public Download download(UUID ownerId, UUID requestId, UUID attachmentId) {
