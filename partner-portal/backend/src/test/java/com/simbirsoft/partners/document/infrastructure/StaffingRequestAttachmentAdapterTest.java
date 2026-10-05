@@ -61,4 +61,20 @@ class StaffingRequestAttachmentAdapterTest {
 
         verify(storage).delete(argThat(key -> key.startsWith("staffing-requests/" + request + "/")));
     }
+
+    @Test
+    void preservesNewObjectWhenTransactionOutcomeIsUnknown() {
+        UUID owner = UUID.randomUUID(), request = UUID.randomUUID();
+        when(attachments.findByRequestIdAndOwnerProfileIdAndKind(request, owner, "cv")).thenReturn(Optional.empty());
+        when(validation.prepare("new.pdf", "application/pdf", new byte[] {1}))
+                .thenReturn(new LeadDocumentService.PreparedAttachment("new.pdf", "application/pdf", new byte[] {1}, "hash"));
+        when(attachments.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TransactionSynchronizationManager.initSynchronization();
+        adapter.upload(owner, request, "cv", "new.pdf", "application/pdf", new byte[] {1});
+        var synchronization = TransactionSynchronizationManager.getSynchronizations().get(0);
+        synchronization.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_UNKNOWN);
+
+        verify(storage, never()).delete(any());
+    }
 }

@@ -49,7 +49,7 @@ class StaffingRequestAttachmentAdapter implements StaffingRequestAttachmentPort 
                         deleteQuietly(previousObjectKey);
                     }
                     @Override public void afterCompletion(int status) {
-                        if (status != STATUS_COMMITTED) deleteQuietly(newObjectKey);
+                        if (status == STATUS_ROLLED_BACK) deleteQuietly(newObjectKey);
                     }
                 });
             } else {
