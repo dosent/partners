@@ -4,6 +4,11 @@ import com.simbirsoft.partners.staffing.application.StaffingRequestService;
 import com.simbirsoft.partners.staffing.domain.StaffingRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,10 +23,11 @@ public record CreateStaffingRequestRequest(@NotNull UUID leadId, @NotNull @Valid
                 new StaffingRequest.SelectionRequirements(selection.language(), selection.languageLevel(),
                         selection.interviewRequired(), selection.screeningRequired(), selection.cvRequired()));
     }
-    public record Role(String title, int headcount, String grade, List<String> requiredSkills,
-            List<String> preferredSkills, String taskDescription) { }
-    public record Work(int hoursPerWeek, StaffingRequest.WorkMode mode, String location,
+    public record Role(@NotBlank @Size(max=200) String title, @Min(1) @Max(100) int headcount,
+            @NotBlank @Size(max=80) String grade, @NotEmpty @Size(max=40) List<@NotBlank @Size(max=120) String> requiredSkills,
+            @Size(max=40) List<@NotBlank @Size(max=120) String> preferredSkills, @NotBlank @Size(max=10000) String taskDescription) { }
+    public record Work(@Min(1) @Max(40) int hoursPerWeek, @NotNull StaffingRequest.WorkMode mode, @NotBlank @Size(max=200) String location,
             boolean workOutsideRussiaAllowed, java.time.LocalDate desiredStartDate, boolean startDateFlexible) { }
-    public record Selection(String language, String languageLevel, boolean interviewRequired,
-            boolean screeningRequired, boolean cvRequired) { }
+    public record Selection(String language, String languageLevel, @NotNull Boolean interviewRequired,
+            @NotNull Boolean screeningRequired, @NotNull Boolean cvRequired) { }
 }

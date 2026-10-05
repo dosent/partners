@@ -34,6 +34,25 @@ export function getPartnerLeadBoard({ query = '', updatedFrom = '', updatedTo = 
   return fetch(`${API}/board?${params}`, { credentials: 'include' }).then(decode);
 }
 
+export async function getAllPartnerLeads() {
+  const leads = new Map();
+  let cursors = {};
+  const complete = new Set();
+  for (let page = 0; page < 100; page += 1) {
+    const board = await getPartnerLeadBoard({ limitPerColumn: 100, cursors });
+    const next = {};
+    for (const column of board.columns ?? []) {
+      if (complete.has(column.lane)) continue;
+      for (const lead of column.items ?? []) leads.set(lead.id, lead);
+      if (column.nextCursor) next[column.lane] = column.nextCursor;
+      else complete.add(column.lane);
+    }
+    if (!Object.keys(next).length) break;
+    cursors = next;
+  }
+  return [...leads.values()];
+}
+
 export async function createPartnerLead(payload, attachment = null) {
   const headers = await csrfHeaders();
   if (attachment) {

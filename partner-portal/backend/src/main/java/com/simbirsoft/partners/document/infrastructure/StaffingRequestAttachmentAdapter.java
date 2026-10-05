@@ -4,6 +4,7 @@ import com.simbirsoft.partners.document.application.LeadDocumentService;
 import com.simbirsoft.partners.document.application.ObjectStorage;
 import com.simbirsoft.partners.staffing.application.StaffingRequestAttachmentPort;
 import java.util.UUID;
+import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -54,5 +55,10 @@ class StaffingRequestAttachmentAdapter implements StaffingRequestAttachmentPort 
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found"));
         try { return new Download(record.fileName, record.contentType, storage.get(record.objectKey)); }
         catch (RuntimeException failure) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Attachment is temporarily unavailable"); }
+    }
+    @Override @Transactional(readOnly=true)
+    public List<Attachment> list(UUID ownerId, UUID requestId) {
+        return attachments.findAllByRequestIdAndOwnerProfileIdOrderByKindAsc(requestId, ownerId).stream()
+                .map(record -> new Attachment(record.id, record.kind, record.fileName)).toList();
     }
 }

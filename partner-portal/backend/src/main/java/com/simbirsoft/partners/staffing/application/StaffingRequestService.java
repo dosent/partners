@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.dao.DataIntegrityViolationException;
+import com.simbirsoft.partners.shared.api.FieldValidationException;
 
 @Service
 @Profile("!auth-test")
@@ -25,7 +27,6 @@ public class StaffingRequestService {
         this.requests=requests; this.leads=leads; this.profiles=profiles;
     }
 
-    @Transactional
     public StaffingRequest create(PartnerPrincipal principal, UUID idempotencyKey, CreateCommand command) {
         if (principal == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Partner session required");
         if (idempotencyKey == null || command == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request data is incomplete");
@@ -33,9 +34,7 @@ public class StaffingRequestService {
         var replay=requests.findByIdempotencyKey(owner, idempotencyKey);
         if (replay.isPresent()) {
             StaffingRequest existing=replay.get();
-            if (!existing.leadId().equals(command.leadId()) || !existing.role().equals(command.role())
-                    || !existing.work().equals(command.work()) || !existing.selection().equals(command.selection()))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Idempotency key was already used for another request");
+            if (!matches(existing, command)) throw conflict();
             return existing;
         }
         leads.findOwnedContext(command.leadId(), owner)
@@ -46,8 +45,34 @@ public class StaffingRequestService {
                     "SR-"+id.toString().substring(0, 8).toUpperCase(), idempotencyKey,
                     command.role(), command.work(), command.selection(), Instant.now()));
         } catch (IllegalArgumentException invalid) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
+            throw validation(invalid.getMessage());
+        } catch (DataIntegrityViolationException duplicate) {
+            var winner = requests.findByIdempotencyKey(owner, idempotencyKey);
+            if (winner.isPresent() && matches(winner.get(), command)) return winner.get();
+            if (winner.isPresent()) throw conflict();
+            throw duplicate;
         }
+    }
+
+    private static boolean matches(StaffingRequest request, CreateCommand command) {
+        return request.leadId().equals(command.leadId()) && request.role().equals(command.role())
+                && request.work().equals(command.work()) && request.selection().equals(command.selection());
+    }
+    private static ResponseStatusException conflict() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "Idempotency key was already used for another request");
+    }
+    private static RuntimeException validation(String message) {
+        String normalized = message.toLowerCase(java.util.Locale.ROOT);
+        String field = normalized.contains("taskdescription") ? "role.taskDescription"
+                : normalized.contains("preferred") ? "role.preferredSkills"
+                : normalized.contains("grade") ? "role.grade"
+                : normalized.contains("required skills") || normalized.contains("skill") ? "role.requiredSkills"
+                : normalized.contains("headcount") ? "role.headcount"
+                : normalized.contains("hours") ? "work.hoursPerWeek"
+                : normalized.contains("location") ? "work.location"
+                : normalized.contains("date") ? "work.desiredStartDate"
+                : normalized.contains("language") ? "selection.languageLevel" : "role.title";
+        return new FieldValidationException("VALIDATION_ERROR", field, "Invalid value");
     }
 
     @Transactional(readOnly=true)
