@@ -249,15 +249,35 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     );
     expect(forbiddenStatusResponse.status()).toBe(403);
     expect(await forbiddenStatusResponse.text()).not.toContain(primaryLead.companyName);
+    const forbiddenQueueResponse = await unassignedStaffContext.request.get('/api/v1/admin/leads');
+    expect(forbiddenQueueResponse.status()).toBe(403);
     await unassignedStaffContext.close();
     unassignedStaffContext = undefined;
 
-    // Staff with LEAD_MANAGE moves the lead; the partner sees both the lane and event history.
-    const statusResponse = await staffContext.request.post(
-      `/api/v1/admin/leads/${createdLead.id}/status`,
-      { data: { status: 'QUALIFICATION' }, headers: await csrfHeaders(staffContext.request) },
-    );
-    expect(statusResponse.ok()).toBeTruthy();
+    // Staff with LEAD_MANAGE processes the lead in the staff workspace.
+    await staffPage.goto('/staff');
+    await staffPage.getByRole('button', { name: 'Обработка лидов' }).click();
+    await expect(staffPage).toHaveURL('/staff/leads');
+    await expect(staffPage.getByRole('heading', { name: 'Обработка лидов' })).toBeVisible();
+    await staffPage.getByRole('searchbox', { name: 'Поиск лидов' }).fill(primaryLead.companyName);
+    await staffPage.getByRole('button', { name: `Открыть лид ${primaryLead.companyName}` }).click();
+    await expect(staffPage.getByRole('heading', { name: primaryLead.companyName })).toBeVisible();
+    await staffPage.getByLabel('Статус лида').selectOption('QUALIFICATION');
+    await staffPage.getByRole('button', { name: 'Сохранить статус' }).click();
+    await expect(staffPage.getByRole('status')).toContainText('Статус сохранён');
+    const publicReply = `Просим уточнить срок запуска ${partner.id.slice(-8)}.`;
+    await staffPage.getByLabel('Комментарий партнёру').fill(publicReply);
+    await staffPage.getByRole('button', { name: 'Отправить комментарий' }).click();
+    await expect(staffPage.getByRole('status')).toContainText('Комментарий отправлен');
+    const internalNote = `Внутренняя проверка ${partner.id.slice(-8)}.`;
+    await staffPage.getByLabel('Внутренний комментарий').check();
+    await staffPage.getByLabel('Комментарий партнёру').fill(internalNote);
+    await staffPage.getByRole('button', { name: 'Отправить комментарий' }).click();
+    await expect(staffPage.getByText(internalNote)).toBeVisible();
+    await staffPage.setViewportSize({ width: 390, height: 844 });
+    await expect(staffPage.getByRole('heading', { name: primaryLead.companyName })).toBeVisible();
+    expect(await staffPage.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await staffPage.setViewportSize({ width: 1280, height: 800 });
     await partnerPage.getByRole('dialog').getByRole('button', { name: 'Закрыть' }).click();
     await partnerPage.reload();
     await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
@@ -269,9 +289,12 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     const updatedDetails = await updatedDetailsResponse.json();
     expect(updatedDetails.status).toBe('QUALIFICATION');
     expect(updatedDetails.history.some(item => item.status === 'QUALIFICATION')).toBe(true);
+    expect(updatedDetails.messages.some(item => item.body === publicReply)).toBe(true);
+    expect(updatedDetails.messages.some(item => item.body === internalNote)).toBe(false);
 
     // A second approved partner cannot enumerate or read this lead or its conversation.
     const second = syntheticPartnerData();
+    await staffPage.goto('/staff');
     unrelatedPartner = await registerAndApprovePartner(browser, staffPage, second);
     const foreignBoard = await unrelatedPartner.context.request.get(api.board);
     expect(foreignBoard.ok()).toBeTruthy();

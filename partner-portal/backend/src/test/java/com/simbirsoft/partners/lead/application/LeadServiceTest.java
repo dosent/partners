@@ -78,6 +78,42 @@ class LeadServiceTest {
     }
 
     @Test
+    void staffQueueSupportsStatusSearchAndPagination() {
+        var expected = new LeadStore.StaffPage(List.of(lead(leadId, owner)), 1, 0, 20);
+        when(store.findStaffPage(LeadStatus.NEW, "Acme", 0, 20)).thenReturn(expected);
+
+        assertThat(service.staffPage(new StaffPrincipal("manager"), LeadStatus.NEW, "Acme", 0, 20))
+                .isEqualTo(expected);
+    }
+
+    @Test
+    void staffCanReadFullLeadAndConversationIncludingInternalNotes() {
+        var lead = lead(leadId, owner);
+        var internalNote = new LeadMessage(UUID.randomUUID(), leadId, "STAFF", "Проверить пересечение", true,
+                Instant.parse("2026-01-02T00:00:00Z"));
+        when(store.findAny(leadId)).thenReturn(Optional.of(lead));
+        when(store.statusHistory(leadId)).thenReturn(List.of());
+        when(store.allMessages(leadId)).thenReturn(List.of(internalNote));
+
+        var detail = service.staffDetail(new StaffPrincipal("manager"), leadId);
+
+        assertThat(detail.lead()).isEqualTo(lead);
+        assertThat(detail.messages()).containsExactly(internalNote);
+    }
+
+    @Test
+    void staffMessageRecordsAuthorVisibilityAndUpdatedLead() {
+        var note = new LeadMessage(UUID.randomUUID(), leadId, "STAFF", "Запрошены уточнения", false,
+                Instant.parse("2026-01-02T00:00:00Z"));
+        when(store.findAny(leadId)).thenReturn(Optional.of(lead(leadId, owner)));
+        when(store.addStaffMessage(eq(leadId), eq("manager"), eq("Запрошены уточнения"), eq(false), any(Instant.class)))
+                .thenReturn(note);
+
+        assertThat(service.sendStaffMessage(new StaffPrincipal("manager"), leadId, " Запрошены уточнения ", false))
+                .isEqualTo(note);
+    }
+
+    @Test
     void rejectsForbiddenOrTerminalStatusTransitions() {
         when(store.findAny(leadId)).thenReturn(Optional.of(lead(leadId,owner)));
         assertThatThrownBy(() -> service.changeStatus(leadId,LeadStatus.WON,new StaffPrincipal("manager")))
