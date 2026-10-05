@@ -153,6 +153,40 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     const createdLead = newLane.items.find(item => item.companyName === primaryLead.companyName);
     expect(createdLead.status).toBe('NEW');
 
+    await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
+      .getByRole('button', { name: 'Заявки на специалистов' }).click();
+    await expect(partnerPage.getByRole('heading', { name: 'Ваши заявки' })).toBeVisible();
+    await partnerPage.getByRole('button', { name: 'Создать заявку' }).click();
+    await partnerPage.getByLabel(/Проект \/ лид/).selectOption(createdLead.id);
+    await partnerPage.getByLabel(/Должность \/ роль/).fill('Backend-разработчик');
+    await partnerPage.getByLabel(/Количество специалистов/).fill('2');
+    await partnerPage.getByLabel('Уровень').selectOption('Middle+');
+    await partnerPage.getByLabel(/Обязательные навыки и стек/).fill('Java, Spring Boot');
+    await partnerPage.locator('input[type="file"]').first().setInputFiles({ name: 'invalid.png', mimeType: 'image/png', buffer: Buffer.from('not a supported attachment') });
+    await expect(partnerPage.getByRole('alert')).toContainText('PDF или DOCX');
+    await expect(partnerPage.getByLabel(/Обязательные навыки и стек/)).toHaveValue('Java, Spring Boot');
+    await partnerPage.getByLabel(/Задачи и ожидания/).fill('Разработка и развитие сервисов проекта.');
+    await partnerPage.getByLabel(/Загрузка, часов в неделю/).fill('40');
+    await partnerPage.getByLabel('Формат работы').selectOption('REMOTE');
+    await partnerPage.getByLabel('Город \/ страна').fill('Удалённо');
+    await partnerPage.getByLabel('Ожидаемая дата подключения').fill('2026-12-15');
+    await partnerPage.getByRole('button', { name: 'Отправить заявку' }).click();
+    await expect(partnerPage.getByText(/^SR-[A-F0-9]{8}$/)).toBeVisible();
+    await expect(partnerPage.getByText('Заявка сохранена')).toBeVisible();
+    await partnerPage.getByRole('button', { name: 'К списку заявок' }).click();
+    await expect(partnerPage.getByRole('heading', { name: 'Backend-разработчик' })).toBeVisible();
+
+    const requestsResponse = await approvedPartner.context.request.get('/api/v1/partner/staffing-requests');
+    expect(requestsResponse.ok()).toBeTruthy();
+    const requestItems = (await requestsResponse.json()).items;
+    expect(requestItems).toHaveLength(1);
+    expect(requestItems[0].role.requiredSkills).toEqual(['Java', 'Spring Boot']);
+    expect(requestItems[0].status).toBe('NEW');
+    const staffingRequestId = requestItems[0].id;
+
+    await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
+      .getByRole('button', { name: 'Мои лиды' }).click();
+
     const search = partnerPage.getByRole('searchbox', { name: 'Поиск лидов' });
     await search.fill(primaryLead.domainOrTaxId);
     await expect(partnerPage.getByText(primaryLead.companyName)).toBeVisible();
@@ -318,6 +352,12 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     expect(await forbiddenMessage.text()).not.toContain('Несанкционированное сообщение');
     const foreignAttachment = await unrelatedPartner.context.request.get(attachedLead.attachments[0].downloadUrl);
     expect([403, 404]).toContain(foreignAttachment.status());
+    const foreignStaffingRequest = await unrelatedPartner.context.request.get(`/api/v1/partner/staffing-requests/${staffingRequestId}`);
+    expect([403, 404]).toContain(foreignStaffingRequest.status());
+    expect(await foreignStaffingRequest.text()).not.toContain('Java, Spring Boot');
+    const foreignStaffingList = await unrelatedPartner.context.request.get('/api/v1/partner/staffing-requests');
+    expect(foreignStaffingList.ok()).toBeTruthy();
+    expect(JSON.stringify(await foreignStaffingList.json())).not.toContain(staffingRequestId);
 
     // On mobile only one lane is shown; it can be switched without horizontal overflow.
     await partnerPage.setViewportSize({ width: 390, height: 844 });

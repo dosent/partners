@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-staffing-requests
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: staffing_request
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: owner_profile_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_staffing_request_profile, references: partner_profile(id), onDelete: CASCADE } }
+              - column: { name: lead_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_staffing_request_lead, references: partner_lead(id) } }
+              - column: { name: number, type: varchar(32), constraints: { nullable: false, unique: true } }
+              - column: { name: idempotency_key, type: uuid, constraints: { nullable: false } }
+              - column: { name: requirements, type: jsonb, constraints: { nullable: false } }
+              - column: { name: status, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, defaultValueNumeric: 0, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            tableName: staffing_request
+            columnNames: owner_profile_id, idempotency_key
+            constraintName: uq_staffing_request_owner_idempotency
+        - createIndex:
+            tableName: staffing_request
+            indexName: idx_staffing_request_owner_created
+            columns:
+              - column: { name: owner_profile_id }
+              - column: { name: created_at }
+  - changeSet:
+      id: 013-staffing-request-attachments
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: staffing_request_attachment
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: request_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_staffing_attachment_request, references: staffing_request(id), onDelete: CASCADE } }
+              - column: { name: owner_profile_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_staffing_attachment_profile, references: partner_profile(id), onDelete: CASCADE } }
+              - column: { name: kind, type: varchar(24), constraints: { nullable: false } }
+              - column: { name: file_name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: content_type, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: object_key, type: varchar(500), constraints: { nullable: false, unique: true } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            tableName: staffing_request_attachment
+            columnNames: request_id, owner_profile_id, kind
+            constraintName: uq_staffing_attachment_request_kind
