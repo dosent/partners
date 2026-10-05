@@ -9,7 +9,7 @@ public final class PartnerAuthenticationToken extends AbstractAuthenticationToke
     private final PartnerPrincipal principal;
 
     public PartnerAuthenticationToken(PartnerPrincipal principal) {
-        super(List.of(new SimpleGrantedAuthority("ROLE_PARTNER")));
+        super(List.of(new SimpleGrantedAuthority("ROLE_PARTNER"), new SimpleGrantedAuthority("PARTNER_WEB_SESSION")));
         this.principal = principal;
         super.setAuthenticated(true);
     }

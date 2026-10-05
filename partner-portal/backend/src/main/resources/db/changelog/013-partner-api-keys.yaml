@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-partner-api-keys
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: partner_api_key
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: identity_provider
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: external_subject
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: prefix
+                  type: varchar(48)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: secret_hash
+                  type: bytea
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_used_at
+                  type: timestamp with time zone
+              - column:
+                  name: revoked_at
+                  type: timestamp with time zone
+        - createIndex:
+            tableName: partner_api_key
+            indexName: idx_partner_api_key_owner
+            columns:
+              - column:
+                  name: identity_provider
+              - column:
+                  name: external_subject
+        - createIndex:
+            tableName: partner_api_key
+            indexName: idx_partner_api_key_active
+            columns:
+              - column:
+                  name: id
+              - column:
+                  name: revoked_at
