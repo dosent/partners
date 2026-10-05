@@ -30,6 +30,13 @@ async function csrfHeaders() {
 
 export const getPartnerSession = () => fetch(`${API}/auth/yandex/session`, { credentials: 'include' }).then(decode);
 
+export async function logoutPartner() {
+  const headers = await csrfHeaders();
+  return decode(await fetch(`${API}/auth/yandex/logout`, {
+    method: 'POST', credentials: 'include', headers,
+  }));
+}
+
 export const getRegistrationContent = locale => fetch(
   `${API}/public/registration-content/${encodeURIComponent(locale)}`, { credentials: 'include' },
 ).then(decode).then(content => enrichLegacyRussianRegistrationContent(content, locale));

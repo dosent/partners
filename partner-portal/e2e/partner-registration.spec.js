@@ -306,6 +306,29 @@ test('staff approval makes the partner portal available without demo data', asyn
     await approvedPartnerPage.getByRole('button', { name: 'E2E KZ Leads' }).click();
     await expect(approvedPartnerPage.getByRole('heading', { name: 'Здесь появятся ваши лиды' })).toBeVisible();
     await expect(approvedPartnerPage.getByText('Демонстрационный аккаунт')).toHaveCount(0);
+
+    await approvedPartnerPage.setViewportSize({ width: 390, height: 844 });
+    const logoutButton = approvedPartnerPage.getByRole('button', { name: 'Выйти' });
+    await expect(logoutButton).toBeVisible();
+    const logoutButtonBox = await logoutButton.boundingBox();
+    expect(logoutButtonBox.x + logoutButtonBox.width).toBeLessThanOrEqual(390);
+
+    await approvedPartnerPage.route('**/api/v1/auth/yandex/logout', route => route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Выход временно недоступен.' }),
+    }));
+    await logoutButton.focus();
+    await approvedPartnerPage.keyboard.press('Enter');
+    await expect(approvedPartnerPage.getByRole('alert')).toContainText('Не удалось выйти из кабинета.');
+    await expect(logoutButton).toBeEnabled();
+    expect((await partnerContext.request.get('/api/v1/auth/yandex/session')).status()).toBe(200);
+
+    await approvedPartnerPage.unroute('**/api/v1/auth/yandex/logout');
+    await logoutButton.click();
+    await expect(approvedPartnerPage.getByRole('button', { name: 'Стать партнёром' })).toBeVisible();
+    expect((await partnerContext.request.get('/api/v1/auth/yandex/session')).status()).toBe(401);
+    expect((await partnerContext.request.get('/api/v1/partners/me')).status()).toBe(401);
   } finally {
     await staffContext.close();
     if (partnerContext) await partnerContext.close();
