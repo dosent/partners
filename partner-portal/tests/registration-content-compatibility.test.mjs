@@ -7,7 +7,7 @@ test('legacy published Russian content receives missing partner profile defaults
   const originalFetch = globalThis.fetch;
   const legacyContent = { locale: 'RU', ...registrationContentFixture('RU') };
   for (const key of Object.keys(legacyContent.strings)) {
-    if (key.startsWith('portal.profile.')) delete legacyContent.strings[key];
+    if (key.startsWith('portal.profile.') || key.startsWith('portal.actions.') || key === 'portal.errors.logout') delete legacyContent.strings[key];
   }
   assert.equal(Object.keys(legacyContent.strings).length, 50, 'fixture matches legacy RU dictionary size');
   legacyContent.strings['portal.title'] = 'Кабинет партнёра, настроенный администратором';
@@ -24,6 +24,9 @@ test('legacy published Russian content receives missing partner profile defaults
     assert.equal(content.strings['portal.profile.title'], 'Профиль');
     assert.equal(content.strings['portal.profile.settings.title'], 'Контактные данные и настройки');
     assert.equal(content.strings['portal.profile.errors.localeUnavailable'], 'Для выбранного языка пока нет опубликованного содержимого.');
+    assert.equal(content.strings['portal.actions.logout'], 'Выйти');
+    assert.equal(content.strings['portal.actions.loggingOut'], 'Выходим…');
+    assert.equal(content.strings['portal.errors.logout'], 'Не удалось выйти из кабинета. Попробуйте ещё раз.');
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -33,7 +36,7 @@ test('legacy non-Russian published content is not filled with Russian profile te
   const originalFetch = globalThis.fetch;
   const legacyContent = { locale: 'EN', ...registrationContentFixture('EN') };
   for (const key of Object.keys(legacyContent.strings)) {
-    if (key.startsWith('portal.profile.')) delete legacyContent.strings[key];
+    if (key.startsWith('portal.profile.') || key.startsWith('portal.actions.') || key === 'portal.errors.logout') delete legacyContent.strings[key];
   }
   globalThis.fetch = async () => new Response(JSON.stringify(legacyContent), {
     status: 200,

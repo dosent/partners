@@ -103,6 +103,9 @@ export function registrationContentFixture(locale = 'RU') {
     'portal.section.documents': 'Документы',
     'portal.welcome': 'Добро пожаловать в партнёрский портал.',
     'portal.emptySection': 'Здесь пока нет данных.',
+    'portal.actions.logout': `E2E ${locale} portal.actions.logout`,
+    'portal.actions.loggingOut': `E2E ${locale} portal.actions.loggingOut`,
+    'portal.errors.logout': `E2E ${locale} portal.errors.logout`,
   };
 
   const offers = Object.fromEntries(['INDIVIDUAL', 'SOLE_PROPRIETOR', 'LEGAL_ENTITY'].map(type => [type, {

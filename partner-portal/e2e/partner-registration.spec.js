@@ -149,7 +149,7 @@ test('staff approval makes the partner portal available without demo data', asyn
       const response = await route.fetch();
       const content = await response.json();
       for (const key of Object.keys(content.strings ?? {})) {
-        if (key.startsWith('portal.profile.')) delete content.strings[key];
+        if (key.startsWith('portal.profile.') || key.startsWith('portal.actions.') || key === 'portal.errors.logout') delete content.strings[key];
       }
       expect(Object.keys(content.strings)).toHaveLength(50);
       await route.fulfill({ response, body: JSON.stringify(content) });
@@ -308,7 +308,7 @@ test('staff approval makes the partner portal available without demo data', asyn
     await expect(approvedPartnerPage.getByText('Демонстрационный аккаунт')).toHaveCount(0);
 
     await approvedPartnerPage.setViewportSize({ width: 390, height: 844 });
-    const logoutButton = approvedPartnerPage.getByRole('button', { name: 'Выйти' });
+    const logoutButton = approvedPartnerPage.getByRole('button', { name: 'E2E KZ portal.actions.logout' });
     await expect(logoutButton).toBeVisible();
     const logoutButtonBox = await logoutButton.boundingBox();
     expect(logoutButtonBox.x + logoutButtonBox.width).toBeLessThanOrEqual(390);
@@ -320,7 +320,7 @@ test('staff approval makes the partner portal available without demo data', asyn
     }));
     await logoutButton.focus();
     await approvedPartnerPage.keyboard.press('Enter');
-    await expect(approvedPartnerPage.getByRole('alert')).toContainText('Не удалось выйти из кабинета.');
+    await expect(approvedPartnerPage.getByRole('alert')).toContainText('E2E KZ portal.errors.logout');
     await expect(logoutButton).toBeEnabled();
     expect((await partnerContext.request.get('/api/v1/auth/yandex/session')).status()).toBe(200);
 

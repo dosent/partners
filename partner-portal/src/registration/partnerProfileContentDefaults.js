@@ -1,4 +1,7 @@
 export const partnerProfileContentDefaults = {
+  'portal.actions.logout': 'Выйти',
+  'portal.actions.loggingOut': 'Выходим…',
+  'portal.errors.logout': 'Не удалось выйти из кабинета. Попробуйте ещё раз.',
   'portal.profile.navigation': 'Профиль',
   'portal.profile.title': 'Профиль',
   'portal.profile.description': 'Контактные данные и настройки вашего аккаунта.',
