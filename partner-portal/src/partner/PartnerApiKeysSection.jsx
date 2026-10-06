@@ -5,6 +5,8 @@ import './PartnerApiKeysSection.css';
 export function PartnerApiKeysSection({ content, onError }) {
   const labels = content?.strings ?? {};
   const text = key => labels[`portal.apiKeys.${key}`] ?? '';
+  const mcpGuideKeys = ['mcp.guide.title', 'mcp.guide.steps', 'mcp.guide.endpoint', 'mcp.guide.example.title', 'mcp.guide.example', 'mcp.guide.security'];
+  const showMcpGuide = mcpGuideKeys.every(key => text(key).trim());
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -54,6 +56,14 @@ export function PartnerApiKeysSection({ content, onError }) {
   return <section className="partner-api-keys" aria-labelledby="partner-api-keys-title">
     <h2 id="partner-api-keys-title">{text('title')}</h2>
     <p>{text('description')}</p>
+    {showMcpGuide && <aside className="partner-api-key-guide" aria-labelledby="partner-api-key-guide-title">
+      <h3 id="partner-api-key-guide-title">{text('mcp.guide.title')}</h3>
+      <p>{text('mcp.guide.steps')}</p>
+      <p>{text('mcp.guide.endpoint')}</p>
+      <h4>{text('mcp.guide.example.title')}</h4>
+      <pre><code>{text('mcp.guide.example')}</code></pre>
+      <p>{text('mcp.guide.security')}</p>
+    </aside>}
     <form className="partner-api-key-create" onSubmit={create}>
       <label htmlFor="partner-api-key-name">{text('name.label')}</label>
       <input id="partner-api-key-name" value={name} onChange={event => setName(event.target.value)} maxLength={100} required />
