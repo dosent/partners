@@ -60,6 +60,8 @@ test('partner creates, sees once, lists, and revokes an API key accessibly', asy
   await apiKeysNav.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'E2E RU apiKeys title' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'E2E RU apiKeys mcp.guide.title' })).toBeVisible();
+  await expect(page.locator('.partner-api-key-guide pre code')).toContainText('E2E RU apiKeys mcp.guide.example');
   const createButton = page.getByRole('button', { name: 'E2E RU apiKeys actions.create' });
   await expect(createButton).toBeVisible();
   const bounds = await createButton.boundingBox();

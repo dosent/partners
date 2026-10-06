@@ -139,6 +139,8 @@ export function registrationContentFixture(locale = 'RU') {
     'navigation', 'title', 'description', 'empty', 'name.label', 'actions.create', 'actions.creating',
     'actions.revoke', 'actions.cancel', 'status.created', 'status.revoked', 'loading', 'errors.load',
     'errors.create', 'errors.revoke', 'secret.title', 'secret.description', 'revoke.confirm',
+    'mcp.guide.title', 'mcp.guide.steps', 'mcp.guide.endpoint', 'mcp.guide.example.title',
+    'mcp.guide.example', 'mcp.guide.security',
   ].map(key => [`portal.apiKeys.${key}`, `E2E ${locale} apiKeys ${key}`])));
   if (locale !== 'RU') {
     strings['portal.title'] = `E2E ${locale} Partner Portal`;
