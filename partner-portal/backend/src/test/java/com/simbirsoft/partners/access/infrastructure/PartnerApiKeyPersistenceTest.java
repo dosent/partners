@@ -36,4 +36,16 @@ class PartnerApiKeyPersistenceTest {
         repository.flush();
         assertThat(repository.findById(id).orElseThrow().toCredential().revokedAt()).isEqualTo(created.plusSeconds(6));
     }
+
+    @Test @Transactional void lastUsedUpdateCannotChangeARevokedKeyBackToActive() {
+        var id=UUID.randomUUID(); var created=Instant.now(); byte[] hash=new byte[32]; hash[0]=7;
+        var row=repository.saveAndFlush(PartnerApiKeyRecord.from(new PartnerApiKeyStore.Credential(id,
+                "yandex", "partner-test", "crm", "ppk_"+id, hash, created, null, null)));
+        row.update(new PartnerApiKeyStore.Credential(id,"yandex","partner-test","crm","ppk_"+id,
+                hash,created,null,created.plusSeconds(2)));
+        repository.flush();
+
+        assertThat(repository.markUsedIfActive(id,created.plusSeconds(3))).isZero();
+        assertThat(repository.findById(id).orElseThrow().toCredential().revokedAt()).isEqualTo(created.plusSeconds(2));
+    }
 }

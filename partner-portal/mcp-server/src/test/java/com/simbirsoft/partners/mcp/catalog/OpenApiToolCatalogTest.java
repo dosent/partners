@@ -41,6 +41,19 @@ class OpenApiToolCatalogTest {
         """))).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test void rejectsUnsupportedCompositionKeywordsAtCatalogLoad() {
+        String json = """
+          {"openapi":"3.0.3","paths":{"/api/v1/tool":{"post":{
+            "x-mcp":{"enabled":true,"name":"composed_tool","description":"tool","behavior":"MUTATING"},
+            "requestBody":{"content":{"application/json":{"schema":{"type":"object","properties":{
+              "value":{"oneOf":[{"type":"string"},{"type":"integer"}]}
+            }}}}}
+          }}}}
+          """;
+        assertThatThrownBy(() -> catalog.parse(json)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported MCP schema keyword");
+    }
+
 
     @Test void rejectsUnsupportedResponseMediaType() {
         String json = """

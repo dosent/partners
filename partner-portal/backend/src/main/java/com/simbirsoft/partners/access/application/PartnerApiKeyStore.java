@@ -10,6 +10,7 @@ public interface PartnerApiKeyStore {
     Optional<Credential> findById(UUID id);
     List<Credential> findByOwner(String provider, String subject);
     void update(Credential credential);
+    boolean markUsedIfActive(UUID id, Instant usedAt);
 
     record Credential(UUID id, String provider, String subject, String name, String prefix,
             byte[] secretHash, Instant createdAt, Instant lastUsedAt, Instant revokedAt) {

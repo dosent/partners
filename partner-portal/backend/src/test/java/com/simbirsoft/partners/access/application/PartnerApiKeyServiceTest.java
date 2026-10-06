@@ -40,7 +40,17 @@ class PartnerApiKeyServiceTest {
         assertThat(service.list(first).getFirst().revokedAt()).isNotNull();
     }
 
-    private static final class InMemoryStore implements PartnerApiKeyStore {
+    @Test
+    void authenticationDoesNotRestoreKeyRevokedAfterInitialRead() {
+        var store = new RevokingDuringTouchStore();
+        var service = new PartnerApiKeyService(store);
+        var key = service.create(new PartnerPrincipal("yandex", "partner-1"), "CRM");
+
+        assertThat(service.authenticate(key.secret())).isEmpty();
+        assertThat(store.findById(key.id()).orElseThrow().revokedAt()).isNotNull();
+    }
+
+    private static class InMemoryStore implements PartnerApiKeyStore {
         private final List<Credential> records = new ArrayList<>();
         @Override public void save(Credential credential) { records.add(credential); }
         @Override public Optional<Credential> findById(UUID id) {
@@ -52,6 +62,22 @@ class PartnerApiKeyServiceTest {
         @Override public void update(Credential credential) {
             var index = records.indexOf(findById(credential.id()).orElseThrow());
             records.set(index, credential);
+        }
+        @Override public boolean markUsedIfActive(UUID id, Instant usedAt) {
+            var current=findById(id).orElseThrow();
+            if(current.revokedAt()!=null) return false;
+            update(new Credential(current.id(),current.provider(),current.subject(),current.name(),current.prefix(),
+                    current.secretHash(),current.createdAt(),usedAt,current.revokedAt()));
+            return true;
+        }
+    }
+
+    private static final class RevokingDuringTouchStore extends InMemoryStore {
+        @Override public boolean markUsedIfActive(UUID id, Instant usedAt) {
+            var current=findById(id).orElseThrow();
+            update(new Credential(current.id(),current.provider(),current.subject(),current.name(),current.prefix(),
+                    current.secretHash(),current.createdAt(),current.lastUsedAt(),Instant.now()));
+            return false;
         }
     }
 }

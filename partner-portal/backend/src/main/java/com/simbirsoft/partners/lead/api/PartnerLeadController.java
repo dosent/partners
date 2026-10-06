@@ -8,6 +8,7 @@ import com.simbirsoft.partners.shared.api.McpToolBehavior;
 import com.simbirsoft.partners.lead.domain.LeadMessage;
 import com.simbirsoft.partners.lead.domain.LeadStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -82,6 +83,14 @@ public class PartnerLeadController {
                 service.profileId(principal), saved.id(), prepared));
         var files = attachments.forLead(lead.id()).stream().map(this::attachmentResponse).toList();
         return LeadDetailResponse.from(lead, service.statusHistory(principal, lead.id()), service.messages(principal, lead.id()), files);
+    }
+
+    @Hidden
+    @PostMapping(consumes=MediaType.MULTIPART_FORM_DATA_VALUE, produces=MediaType.APPLICATION_JSON_VALUE)
+    public LeadDetailResponse createWithAttachmentCompatibility(@AuthenticationPrincipal PartnerPrincipal principal,
+            @Valid @RequestPart("request") CreateLeadRequest request,
+            @RequestPart(value="attachment", required=false) MultipartFile attachment) {
+        return createWithAttachment(principal, request, attachment);
     }
 
     @McpTool(name="partner_lead_get", description="Get one owned partner lead with its history", behavior=McpToolBehavior.READ_ONLY)

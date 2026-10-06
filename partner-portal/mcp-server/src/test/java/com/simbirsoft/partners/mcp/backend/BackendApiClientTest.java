@@ -43,6 +43,36 @@ class BackendApiClientTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test void rejectsInvalidTypesBeforeMakingBackendRequest() {
+        assertThatThrownBy(() -> client.invoke(tool(),Map.of("value",42),"k"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("type");
+        assertThat(server.getRequestCount()).isZero();
+    }
+
+    @Test void rejectsNullForRequiredPropertyBeforeMakingBackendRequest() {
+        var arguments=new java.util.HashMap<String,Object>(); arguments.put("value",null);
+        assertThatThrownBy(() -> client.invoke(tool(),arguments,"k"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("type");
+        assertThat(server.getRequestCount()).isZero();
+    }
+
+    @Test void validatesNestedRequiredPropertiesAndEnumsBeforeDispatch() {
+        var nested=new ObjectMapper().createObjectNode().put("type","object");
+        var properties=nested.putObject("properties");
+        properties.putObject("state").put("type","string").putArray("enum").add("active").add("paused");
+        nested.putArray("required").add("state");
+        var root=new ObjectMapper().createObjectNode().put("type","object");
+        root.putObject("properties").set("profile",nested);
+        var definition=new McpToolDefinition("nested_tool","Nested operation","MUTATING","POST","/api/v1/nested",
+                List.of(),root,root,"application/json","application/json",false);
+
+        assertThatThrownBy(() -> client.invoke(definition,Map.of("profile",Map.of("state","deleted")),"k"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("value");
+        assertThatThrownBy(() -> client.invoke(definition,Map.of("profile",Map.of()),"k"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("required");
+        assertThat(server.getRequestCount()).isZero();
+    }
+
     @Test void preservesBackend401And403Statuses() {
         server.enqueue(new MockResponse().setResponseCode(401).setBody("{\"code\":\"UNAUTHORIZED\"}"));
         server.enqueue(new MockResponse().setResponseCode(403).setBody("{\"code\":\"FORBIDDEN\"}"));

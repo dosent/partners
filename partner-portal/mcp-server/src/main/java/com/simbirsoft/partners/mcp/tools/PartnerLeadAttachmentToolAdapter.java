@@ -55,6 +55,7 @@ public class PartnerLeadAttachmentToolAdapter implements ToolCallbackProvider {
 
     private String download(Map<String,Object> args,McpToolDefinition tool) {
         BackendToolResult response=backend.invoke(tool,args,OpenApiToolCallbackProvider.currentKey());
+        if(response.status()>=400) throw OpenApiToolCallbackProvider.backendError(response);
         var body=new LinkedHashMap<String,Object>();
         body.put("status",response.status());
         if(response.traceId()!=null) body.put("traceId",response.traceId());

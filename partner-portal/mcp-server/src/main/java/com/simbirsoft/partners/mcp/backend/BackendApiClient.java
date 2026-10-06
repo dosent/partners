@@ -118,15 +118,42 @@ public class BackendApiClient {
 
     private void validateArguments(McpToolDefinition tool,Map<String,Object> args) {
         if(args==null) throw new IllegalArgumentException("Tool arguments are required");
-        var allowed=new java.util.HashSet<String>();
-        tool.parameters().forEach(value->allowed.add(value.name()));
-        if(tool.requestSchema()!=null&&tool.requestSchema().path("properties").isObject())
-            tool.requestSchema().path("properties").fieldNames().forEachRemaining(allowed::add);
-        for(String name:args.keySet()) if(!allowed.contains(name)) throw new IllegalArgumentException("Unknown tool argument: "+name);
         for(var parameter:tool.parameters()) if((parameter.required()||"path".equals(parameter.location()))&&!args.containsKey(parameter.name()))
             throw new IllegalArgumentException("Missing required argument: "+parameter.name());
-        if(tool.requestSchema()!=null) for(var field:tool.requestSchema().path("required"))
-            if(field.isTextual()&&!args.containsKey(field.asText())) throw new IllegalArgumentException("Missing required argument: "+field.asText());
+        validateSchema(tool.inputSchema(),mapper.valueToTree(args),"arguments");
+    }
+
+    private void validateSchema(com.fasterxml.jackson.databind.JsonNode schema,
+            com.fasterxml.jackson.databind.JsonNode value,String path) {
+        String type=schema.path("type").asText("");
+        if(value.isNull()&&schema.path("nullable").asBoolean(false)) return;
+        boolean matches=switch(type) {
+            case "object" -> value.isObject(); case "array" -> value.isArray(); case "string" -> value.isTextual();
+            case "integer" -> value.isIntegralNumber(); case "number" -> value.isNumber();
+            case "boolean" -> value.isBoolean(); case "" -> true;
+            default -> throw new IllegalArgumentException("Unsupported input schema type at "+path);
+        };
+        if(!matches) throw new IllegalArgumentException("Invalid tool argument type at "+path);
+        var enumeration=schema.path("enum");
+        if(enumeration.isArray()&&enumeration.size()>0&&!contains(enumeration,value))
+            throw new IllegalArgumentException("Invalid tool argument value at "+path);
+        if(value.isObject()) {
+            var properties=schema.path("properties");
+            for(var required:schema.path("required")) if(required.isTextual()&&!value.has(required.asText()))
+                throw new IllegalArgumentException("Missing required argument: "+path+"."+required.asText());
+            if(!schema.path("additionalProperties").asBoolean(false)) {
+                value.fieldNames().forEachRemaining(name->{if(!properties.has(name))
+                    throw new IllegalArgumentException("Unknown tool argument: "+path+"."+name);});
+            }
+            value.fields().forEachRemaining(field->{if(properties.has(field.getKey()))
+                validateSchema(properties.get(field.getKey()),field.getValue(),path+"."+field.getKey());});
+        }
+        if(value.isArray()&&schema.has("items")) value.forEach(item->validateSchema(schema.get("items"),item,path+"[]"));
+    }
+
+    private static boolean contains(com.fasterxml.jackson.databind.JsonNode choices,com.fasterxml.jackson.databind.JsonNode value) {
+        for(var choice:choices) if(choice.equals(value)) return true;
+        return false;
     }
 
     private Map<String,Object> bodyArguments(McpToolDefinition tool,Map<String,Object> args) {

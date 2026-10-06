@@ -114,4 +114,13 @@ class OpenApiToolCallbackProviderTest {
         assertThat(recorded.getBody().readUtf8()).contains("partner@example.test");
         assertThat(output).contains("updated").contains("200");
     }
+
+    @Test void backendHttpFailuresBecomeToolErrorsWithoutExposingNonJsonBody() {
+        var result=new com.simbirsoft.partners.mcp.backend.BackendToolResult(502,
+                "<html>secret proxy page</html>".getBytes(),"text/html", "trace-123");
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->OpenApiToolCallbackProvider.render(result))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("BACKEND_ERROR").hasMessageContaining("trace-123")
+                .hasMessageNotContaining("secret proxy page");
+    }
 }

@@ -39,6 +39,10 @@ class ApiDocumentationConfigTest {
                 "partner_lead_get", "partner_lead_attachment_download", "partner_lead_message"), java.util.Set.copyOf(leadTools));
         assertFalse(Arrays.stream(PartnerApiKeyController.class.getDeclaredMethods()).anyMatch(method -> method.isAnnotationPresent(McpTool.class)));
         assertFalse(Arrays.stream(PartnerMcpAccessController.class.getDeclaredMethods()).anyMatch(method -> method.isAnnotationPresent(McpTool.class)));
+        var compatibility = Arrays.stream(PartnerLeadController.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("createWithAttachmentCompatibility")).findFirst().orElseThrow();
+        assertNotNull(compatibility.getAnnotation(io.swagger.v3.oas.annotations.Hidden.class));
+        assertFalse(compatibility.isAnnotationPresent(McpTool.class));
     }
 
     @Test

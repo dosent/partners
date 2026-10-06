@@ -83,6 +83,7 @@ test('partner creates, sees once, lists, and revokes an API key accessibly', asy
   expect(tools.status).toBe(200);
   expect(tools.payload.result.tools.map(tool => tool.name)).not.toContain('partner_api_key_list');
   expect((await postUnauthenticatedMcp(page.context().request)).status()).toBe(401);
+  expect((await postUnauthenticatedMcp(page.context().request, 'invalid-partner-key')).status()).toBe(401);
   await page.getByRole('button', { name: 'E2E RU apiKeys actions.cancel' }).click();
   await expect(secret).toHaveCount(0);
   await expect(page.getByText(revealed, { exact: true })).toHaveCount(0);

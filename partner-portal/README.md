@@ -19,6 +19,8 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+E2E builds the backend and MCP jars on the host with JDK 21 and Gradle Wrapper. It first uses Gradle's offline cache, then retries online if dependencies are missing. Docker runs the resulting jars with PostgreSQL; Java 21 must be installed on the host.
+
 В Linux при отсутствии системных библиотек браузера используйте `npx playwright install --with-deps chromium`.
 
 Чтобы запустить один сценарий или отфильтровать тесты по названию:

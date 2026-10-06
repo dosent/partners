@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
+import java.time.Instant;
 
 @Repository
 class JpaPartnerApiKeyStore implements PartnerApiKeyStore {
@@ -17,5 +18,8 @@ class JpaPartnerApiKeyStore implements PartnerApiKeyStore {
     }
     @Override public void update(Credential credential) {
         var row=repository.findById(credential.id()).orElseThrow(); row.update(credential); repository.saveAndFlush(row);
+    }
+    @Override public boolean markUsedIfActive(UUID id, Instant usedAt) {
+        return repository.markUsedIfActive(id, usedAt) == 1;
     }
 }

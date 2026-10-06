@@ -58,8 +58,7 @@ public class PartnerApiKeyService {
         var credential = store.findById(id).orElse(null);
         if (credential == null || credential.revokedAt() != null
                 || !MessageDigest.isEqual(credential.secretHash(), hash(rawKey))) return Optional.empty();
-        store.update(new PartnerApiKeyStore.Credential(credential.id(), credential.provider(), credential.subject(),
-                credential.name(), credential.prefix(), credential.secretHash(), credential.createdAt(), Instant.now(), null));
+        if (!store.markUsedIfActive(credential.id(), Instant.now())) return Optional.empty();
         return Optional.of(new ApiKeyIdentity(id, credential.provider(), credential.subject()));
     }
 

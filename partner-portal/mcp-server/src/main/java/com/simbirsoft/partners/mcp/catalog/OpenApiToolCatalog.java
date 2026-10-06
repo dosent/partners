@@ -78,6 +78,7 @@ public final class OpenApiToolCatalog {
                 if (!parameterNames.add(parameterName)) throw new IllegalArgumentException("Duplicate MCP argument name");
                 parameters.add(new McpToolDefinition.ParameterDefinition(parameterName,location,
                         parameter.path("required").asBoolean(false),resolveSchema(parameter.path("schema"),root,new java.util.HashSet<>())));
+                assertSupportedSchema(parameters.getLast().schema());
             }
         }
 
@@ -97,6 +98,7 @@ public final class OpenApiToolCatalog {
             requestSchema=resolveSchema(content.path(requestMedia).path("schema"),root,new java.util.HashSet<>());
             if (!requestSchema.isObject() || !"object".equals(requestSchema.path("type").asText()))
                 throw new IllegalArgumentException("MCP request schema must be an object");
+            assertSupportedSchema(requestSchema);
             if ("application/json".equals(requestMedia)) { }
             else if ("multipart/form-data".equals(requestMedia) && "partner_lead_create_with_attachment".equals(name)) adapterRequired=true;
             else throw new IllegalArgumentException("Unsupported MCP request media type: " + requestMedia);
@@ -179,6 +181,32 @@ public final class OpenApiToolCatalog {
             return copy;
         }
         return source.deepCopy();
+    }
+
+    private void assertSupportedSchema(JsonNode schema) {
+        if(!schema.isObject()) throw new IllegalArgumentException("MCP input schema must be an object");
+        var allowed=java.util.Set.of("type","properties","required","additionalProperties","enum","items","format",
+                "description","title","default","example","nullable","minimum","maximum","exclusiveMinimum",
+                "exclusiveMaximum","minLength","maxLength","pattern","minItems","maxItems","uniqueItems",
+                "minProperties","maxProperties","multipleOf","readOnly","writeOnly","deprecated");
+        schema.fieldNames().forEachRemaining(name->{if(!allowed.contains(name))
+            throw new IllegalArgumentException("Unsupported MCP schema keyword: "+name);});
+        String type=schema.path("type").asText("");
+        if(!type.isBlank()&&!java.util.Set.of("object","array","string","integer","number","boolean").contains(type))
+            throw new IllegalArgumentException("Unsupported MCP schema type: "+type);
+        if(schema.has("properties")) {
+            if(!schema.path("properties").isObject()) throw new IllegalArgumentException("Invalid MCP schema properties");
+            schema.path("properties").elements().forEachRemaining(this::assertSupportedSchema);
+        }
+        if(schema.has("additionalProperties")&&!schema.path("additionalProperties").isBoolean())
+            throw new IllegalArgumentException("Unsupported MCP additionalProperties schema");
+        if(schema.has("items")) assertSupportedSchema(schema.path("items"));
+        if(schema.has("required")&&!schema.path("required").isArray()) throw new IllegalArgumentException("Invalid MCP schema required list");
+        if(schema.path("required").isArray()) schema.path("required").elements().forEachRemaining(node->{
+            if(!node.isTextual()) throw new IllegalArgumentException("Invalid MCP schema required entry");
+        });
+        if(schema.has("enum")&&!schema.path("enum").isArray()) throw new IllegalArgumentException("Invalid MCP schema enum");
+        if("array".equals(type)&&!schema.has("items")) throw new IllegalArgumentException("MCP array schema requires items");
     }
 
     private static boolean contains(ArrayNode array,String value) {

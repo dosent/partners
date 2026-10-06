@@ -55,24 +55,30 @@ public class OpenApiToolCallbackProvider implements ToolCallbackProvider {
     }
 
     static String render(BackendToolResult result) {
+        if (result.status() >= 400) throw backendError(result);
         try {
-            JsonNode body=new ObjectMapper().readTree(result.body());
+            JsonNode body=result.body().length==0?null:new ObjectMapper().readTree(result.body());
             Map<String,Object> mapped=new LinkedHashMap<>();
             mapped.put("status",result.status());
             if (result.traceId()!=null) mapped.put("traceId",result.traceId());
-            if(result.status()>=400) {
-                mapped.put("error",Map.of("code",body.path("code").asText("BACKEND_ERROR"),
-                        "message",body.path("message").asText("Backend operation failed")));
-            } else mapped.put("result",body);
+            mapped.put("result",body);
             return new ObjectMapper().writeValueAsString(mapped);
         } catch(Exception invalidJson) {
-            return "{\"status\":"+result.status()+",\"traceId\":"+quote(result.traceId())+",\"result\":"+
-                    quote(result.bodyText())+"}";
+            throw new IllegalStateException("Backend returned an invalid JSON response");
         }
     }
-    private static String quote(String value) {
-        if(value==null) return "null";
-        try{return new ObjectMapper().writeValueAsString(value);}catch(Exception impossible){return "null";}
-    }
 
+    static RuntimeException backendError(BackendToolResult result) {
+        String code="BACKEND_ERROR", message="Backend operation failed";
+        try {
+            JsonNode body=new ObjectMapper().readTree(result.body());
+            code=body.path("code").asText(code);
+            message=body.path("message").asText(message);
+        } catch(Exception ignored) { }
+        var error=new LinkedHashMap<String,Object>();
+        error.put("status",result.status()); error.put("code",code); error.put("message",message);
+        if(result.traceId()!=null) error.put("traceId",result.traceId());
+        try { return new IllegalStateException(new ObjectMapper().writeValueAsString(error)); }
+        catch(Exception impossible) { return new IllegalStateException("Backend operation failed"); }
+    }
 }
