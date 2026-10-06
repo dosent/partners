@@ -19,6 +19,7 @@ import com.simbirsoft.partners.access.infrastructure.StaffRoleAuditRepository;
 import com.simbirsoft.partners.partner.application.PartnerProfileStore;
 import com.simbirsoft.partners.partner.infrastructure.PartnerApplicationStore;
 import com.simbirsoft.partners.audit.application.PartnerProfileChangeAudit;
+import com.simbirsoft.partners.audit.application.StaffingRequestAssignmentAudit;
 import com.simbirsoft.partners.localization.application.RegistrationContentStore;
 import com.simbirsoft.partners.audit.infrastructure.PartnerProfileAuditRepository;
 import com.simbirsoft.partners.access.infrastructure.PartnerAuthenticationToken;
@@ -51,6 +52,7 @@ class PartnerApiKeyAuthenticationMockMvcTest {
     @MockitoBean(name = "jpaPartnerProfileStore") PartnerProfileStore partnerProfileStore;
     @MockitoBean(name = "jpaApprovedPartnerProfileSource") com.simbirsoft.partners.partner.application.ApprovedPartnerProfileSource approvedPartnerProfileSource;
     @MockitoBean PartnerProfileChangeAudit profileChangeAudit;
+    @MockitoBean StaffingRequestAssignmentAudit assignmentAudit;
     @MockitoBean YandexIdentityProvider identityProvider;
 
     @Test void apiKeyCanCheckMcpAccess() throws Exception {

@@ -20,6 +20,7 @@ import com.simbirsoft.partners.access.application.YandexIdentityProvider;
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
 import com.simbirsoft.partners.access.application.PartnerApiKeyStore;
 import com.simbirsoft.partners.audit.application.PartnerProfileChangeAudit;
+import com.simbirsoft.partners.audit.application.StaffingRequestAssignmentAudit;
 import com.simbirsoft.partners.access.application.StaffRoleGrantStore;
 import com.simbirsoft.partners.access.infrastructure.StaffRoleGrantRepository;
 import com.simbirsoft.partners.access.infrastructure.StaffRoleAuditRepository;
@@ -83,6 +84,8 @@ class YandexOAuthFlowTest {
 
     @MockitoBean
     private PartnerProfileChangeAudit partnerProfileChangeAudit;
+    @MockitoBean
+    private StaffingRequestAssignmentAudit assignmentAudit;
 
     @Autowired
     private Environment environment;

@@ -12,7 +12,7 @@ import java.util.UUID;
 
 public record StaffingRequest(UUID id, UUID ownerProfileId, UUID leadId, String number, UUID idempotencyKey,
         RoleRequirements role, WorkConditions work, SelectionRequirements selection, StaffingRequestStatus status,
-        Instant createdAt, Instant updatedAt, long version) {
+        Instant createdAt, Instant updatedAt, long version, String assignedResourceManagerUsername) {
 
     public StaffingRequest {
         Objects.requireNonNull(id, "id is required");
@@ -70,7 +70,12 @@ public record StaffingRequest(UUID id, UUID ownerProfileId, UUID leadId, String 
             UUID idempotencyKey, RoleRequirements role, WorkConditions work,
             SelectionRequirements selection, Instant createdAt) {
         return new StaffingRequest(id, ownerProfileId, leadId, number, idempotencyKey, role, work, selection,
-                StaffingRequestStatus.NEW, createdAt, createdAt, 0);
+                StaffingRequestStatus.NEW, createdAt, createdAt, 0, null);
+    }
+
+    public StaffingRequest withAssignee(String username, Instant changedAt) {
+        return new StaffingRequest(id, ownerProfileId, leadId, number, idempotencyKey, role, work, selection,
+                status, createdAt, changedAt, version, username);
     }
 
     private static String requiredText(String value, int maxLength, String name) {

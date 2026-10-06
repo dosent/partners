@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-staffing-request-assignment
+      author: partner-portal
+      changes:
+        - addColumn:
+            tableName: staffing_request
+            columns:
+              - column: { name: assigned_resource_manager_username, type: varchar(255) }
+  - changeSet:
+      id: 014-staffing-request-assignment-audit
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: staffing_request_assignment_audit
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: request_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: action, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: previous_username, type: varchar(255) }
+              - column: { name: current_username, type: varchar(255) }
+              - column: { name: actor, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: occurred_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - createIndex:
+            tableName: staffing_request_assignment_audit
+            indexName: idx_staffing_assignment_request_occurred
+            columns:
+              - column: { name: request_id }
+              - column: { name: occurred_at }

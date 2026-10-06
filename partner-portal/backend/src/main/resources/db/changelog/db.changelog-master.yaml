@@ -207,3 +207,6 @@ databaseChangeLog:
   - include:
       file: 013-staffing-requests.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 014-staffing-request-assignment.yaml
+      relativeToChangelogFile: true
