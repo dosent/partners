@@ -25,6 +25,12 @@ public class JpaStaffRoleGrantStore implements StaffRoleGrantStore {
                 .collect(Collectors.toUnmodifiableSet());
     }
     @Override @Transactional(readOnly = true)
+    public List<String> usernamesWithRole(StaffRole role) {
+        return grants.findAllByRoleOrderByUsernameAsc(role).stream()
+                .map(StaffRoleGrantRecord::username)
+                .toList();
+    }
+    @Override @Transactional(readOnly = true)
     public List<StaffRoleAssignment> usersWithRoles() {
         Map<String, List<String>> rolesByUsername = new java.util.TreeMap<>();
         grants.findAllByOrderByUsernameAscRoleAsc().forEach(grant -> {
