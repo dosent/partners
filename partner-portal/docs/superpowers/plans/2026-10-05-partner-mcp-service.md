@@ -210,7 +210,7 @@
 - [x] Убедиться, что документация говорит о ключе как о статическом API key, не как о MCP OAuth access token, и не советует помещать его в URL/логи.
 - [x] Запустить `openspec validate partner-mcp-service --strict`, `cd backend && ./gradlew test`, `./backend/gradlew -p mcp-server test bootJar`, `npm run build`, применимые `node --test` проверки и обязательный `npm run test:e2e` (Compose с PostgreSQL). Исправлять ошибки и повторять e2e до успеха.
 - [x] Выполнить применимые ArchUnit/API/security/translation checks, проверить `git diff --check`, отсутствие секретов/демо-данных в production образе и статус `.env`/`.env.example`.
-- [ ] Закоммитить документацию и e2e: `test: verify partner MCP access end to end`.
+- [x] Закоммитить документацию и e2e: `test: verify partner MCP access end to end`.
 - [ ] После успешных проверок интегрировать feature-ветку отдельным коммитом в локальную `main`; не выполнять push.
 
 ## Notes
