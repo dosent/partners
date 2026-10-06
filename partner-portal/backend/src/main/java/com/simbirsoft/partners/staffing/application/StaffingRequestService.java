@@ -1,6 +1,12 @@
 package com.simbirsoft.partners.staffing.application;
 
 import com.simbirsoft.partners.access.application.PartnerPrincipal;
+import com.simbirsoft.partners.access.application.StaffPrincipal;
+import com.simbirsoft.partners.access.application.StaffRole;
+import com.simbirsoft.partners.access.application.StaffRoleLookup;
+import com.simbirsoft.partners.audit.application.StaffingRequestAssignmentAudit;
+import java.util.Objects;
+import java.util.Locale;
 import com.simbirsoft.partners.lead.application.LeadPartnerContextLookup;
 import com.simbirsoft.partners.partner.application.PartnerProfileService;
 import com.simbirsoft.partners.staffing.domain.StaffingRequest;
@@ -21,10 +27,61 @@ public class StaffingRequestService {
     private final StaffingRequestStore requests;
     private final LeadPartnerContextLookup leads;
     private final PartnerProfileService profiles;
+    private final StaffRoleLookup staffRoles;
+    private final StaffingRequestAssignmentAudit audit;
 
     public StaffingRequestService(StaffingRequestStore requests, LeadPartnerContextLookup leads,
-            PartnerProfileService profiles) {
+            PartnerProfileService profiles, StaffRoleLookup staffRoles, StaffingRequestAssignmentAudit audit) {
         this.requests=requests; this.leads=leads; this.profiles=profiles;
+        this.staffRoles=staffRoles; this.audit=audit;
+    }
+
+    @Transactional(readOnly=true)
+    public StaffingRequestStore.StaffPage staffPage(StaffPrincipal actor, int page, int size) {
+        requireStaffPermission(actor);
+        if (page < 0 || size < 1 || size > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid page");
+        return requests.findStaffPage(page, size);
+    }
+
+    @Transactional(readOnly=true)
+    public List<String> assignees(StaffPrincipal actor) {
+        requireStaffPermission(actor);
+        return staffRoles.usernamesWithRole(StaffRole.RESOURCE_MANAGER);
+    }
+
+    @Transactional
+    public StaffingRequest assignResourceManager(StaffPrincipal actor, UUID id, String username, long expectedVersion) {
+        requireStaffPermission(actor);
+        if (expectedVersion < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid version");
+        StaffingRequest current = requests.findAny(id).orElseThrow(StaffingRequestService::notFound);
+        if (current.version() != expectedVersion)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Staffing request was changed");
+        String normalized = normalizeUsername(username);
+        if (normalized != null && !staffRoles.hasRole(normalized, StaffRole.RESOURCE_MANAGER))
+            throw new FieldValidationException("VALIDATION_ERROR", "username", "Resource manager is required");
+        String previous = current.assignedResourceManagerUsername();
+        if (Objects.equals(previous, normalized)) return current;
+        Instant now = Instant.now();
+        StaffingRequest saved = requests.saveAndFlush(current.withAssignee(normalized, now));
+        var action = normalized == null ? StaffingRequestAssignmentAudit.Action.UNASSIGNED
+                : previous == null ? StaffingRequestAssignmentAudit.Action.ASSIGNED : StaffingRequestAssignmentAudit.Action.REASSIGNED;
+        audit.record(id, action, previous, normalized, actor.username(), now);
+        return saved;
+    }
+
+    private void requireStaffPermission(StaffPrincipal actor) {
+        if (actor == null || actor.username() == null || actor.username().isBlank())
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Staff session required");
+        if (!staffRoles.hasPermission(actor.username(), "staffing.request.manage"))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Staffing request permission required");
+    }
+
+    private static String normalizeUsername(String username) {
+        if (username == null) return null;
+        String normalized = username.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.length() > 255 || normalized.chars().anyMatch(Character::isISOControl))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid resource manager username");
+        return normalized;
     }
 
     public StaffingRequest create(PartnerPrincipal principal, UUID idempotencyKey, CreateCommand command) {
