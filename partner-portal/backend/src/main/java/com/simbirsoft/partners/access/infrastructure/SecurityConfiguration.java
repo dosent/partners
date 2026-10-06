@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -28,7 +29,8 @@ public class SecurityConfiguration {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository contextRepository,
-            ObjectMapper objectMapper, com.simbirsoft.partners.access.application.StaffAccessService staffAccess)
+            ObjectMapper objectMapper, com.simbirsoft.partners.access.application.StaffAccessService staffAccess,
+            com.simbirsoft.partners.access.application.PartnerApiKeyService partnerApiKeyService)
             throws Exception {
         http
                 .securityContext(context -> context.securityContextRepository(contextRepository))
@@ -39,6 +41,8 @@ public class SecurityConfiguration {
                                 "/actuator/health/**", "/actuator/info")
                         .permitAll()
                         .requestMatchers("/api/v1/auth/yandex/session").hasRole("PARTNER")
+                        .requestMatchers("/api/v1/partner/api-keys/**").hasAuthority("PARTNER_WEB_SESSION")
+                        .requestMatchers("/api/v1/partner/mcp/access").hasAuthority("PARTNER_API_KEY")
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/yandex/logout").hasRole("PARTNER")
                         .requestMatchers("/api/v1/partners/**", "/api/v1/partner/**").hasRole("PARTNER")
                         .requestMatchers("/api/v1/auth/staff/session", "/api/v1/auth/staff/logout").hasRole("STAFF")
@@ -59,7 +63,9 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/admin/staff-access/**").hasAuthority("staff.access.manage")
                         .anyRequest().authenticated())
                 .addFilterBefore(new StaffAccessRefreshFilter(staffAccess, objectMapper), AuthorizationFilter.class)
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .addFilterBefore(new PartnerApiKeyAuthenticationFilter(partnerApiKeyService, objectMapper), CsrfFilter.class)
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers(request -> request.getHeader(PartnerApiKeyAuthenticationFilter.HEADER) != null))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, failure) -> writeSecurityError(
                                 request, response, objectMapper, 401, "UNAUTHORIZED", "Authentication required"))

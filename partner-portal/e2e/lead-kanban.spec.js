@@ -5,6 +5,7 @@ import { E2E_BASE_URL } from './support/base-url.js';
 const api = {
   applications: '/api/v1/admin/partner-applications?page=0&size=100',
   leads: '/api/v1/partner/leads',
+  leadsWithAttachment: '/api/v1/partner/leads/with-attachment',
   board: '/api/v1/partner/leads/board',
 };
 
@@ -99,8 +100,8 @@ async function createLeadViaApi(request, partner, suffix) {
   return response.json();
 }
 
-async function createLeadWithAttachment(request, partner, suffix, file) {
-  return request.post(api.leads, {
+async function createLeadWithAttachment(request, partner, suffix, file, endpoint = api.leadsWithAttachment) {
+  return request.post(endpoint, {
     headers: await csrfHeaders(request),
     multipart: {
       request: { name: 'request.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(newLead(partner, suffix))) },
@@ -273,6 +274,12 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     const fileResponse = await approvedPartner.context.request.get(attachedLead.attachments[0].downloadUrl);
     expect(fileResponse.ok()).toBeTruthy();
     expect(await fileResponse.body()).toEqual(Buffer.from('%PDF-1.7\nsynthetic E2E document'));
+    const legacyAttachmentResponse = await createLeadWithAttachment(approvedPartner.context.request, partner,
+      `legacy-вложение-${partner.id.slice(-8)}`, {
+        name: 'legacy-brief.pdf', mimeType: 'application/pdf',
+        buffer: Buffer.from('%PDF-1.7\nlegacy synthetic E2E document'),
+      }, api.leads);
+    expect(legacyAttachmentResponse.status()).toBe(200);
     const infectedResponse = await createLeadWithAttachment(approvedPartner.context.request, partner,
       `eicar-${partner.id.slice(-8)}`, {
         name: 'infected.pdf', mimeType: 'application/pdf',

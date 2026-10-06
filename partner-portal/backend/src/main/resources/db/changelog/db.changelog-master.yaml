@@ -202,5 +202,8 @@ databaseChangeLog:
       file: 012-partner-lead-comment-author.yaml
       relativeToChangelogFile: true
   - include:
+      file: 013-partner-api-keys.yaml
+      relativeToChangelogFile: true
+  - include:
       file: 013-staffing-requests.yaml
       relativeToChangelogFile: true

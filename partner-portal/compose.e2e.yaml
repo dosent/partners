@@ -48,6 +48,29 @@ services:
       start_period: 30s
     restart: "no"
 
+  mcp:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile.e2e
+    environment:
+      SERVER_PORT: 8081
+      BACKEND_API_URL: http://backend:8080
+      BACKEND_OPENAPI_URL: http://backend:8080/v3/api-docs
+      MCP_BACKEND_TIMEOUT: PT10S
+      MCP_MAX_REQUEST_BYTES: "31457280"
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "18089:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8081/actuator/health/readiness || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 30s
+    restart: "no"
+
   postgres:
     image: postgres:16-alpine
     environment:

@@ -68,3 +68,26 @@ export async function submitPartnerApplication(payload, resubmit = false) {
     body: JSON.stringify(payload),
   }));
 }
+
+export const listMyPartnerApiKeys = () => fetch(`${API}/partner/api-keys`, {
+  credentials: 'include',
+}).then(decode);
+
+export async function createMyPartnerApiKey(name) {
+  const headers = await csrfHeaders();
+  return decode(await fetch(`${API}/partner/api-keys`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ name }),
+  }));
+}
+
+export async function revokeMyPartnerApiKey(id) {
+  const headers = await csrfHeaders();
+  return decode(await fetch(`${API}/partner/api-keys/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers,
+  }));
+}

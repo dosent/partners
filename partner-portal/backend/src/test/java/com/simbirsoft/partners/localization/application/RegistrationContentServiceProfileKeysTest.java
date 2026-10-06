@@ -53,7 +53,13 @@ class RegistrationContentServiceProfileKeysTest {
                     "portal.profile.errors.save",
                     "portal.profile.loading",
                     "portal.profile.errors.load",
-                    "portal.profile.errors.localeUnavailable");
+                    "portal.profile.errors.localeUnavailable",
+                    "portal.apiKeys.navigation", "portal.apiKeys.title", "portal.apiKeys.description", "portal.apiKeys.empty",
+                    "portal.apiKeys.name.label", "portal.apiKeys.actions.create", "portal.apiKeys.actions.creating",
+                    "portal.apiKeys.actions.revoke", "portal.apiKeys.actions.cancel", "portal.apiKeys.status.created",
+                    "portal.apiKeys.status.revoked", "portal.apiKeys.loading", "portal.apiKeys.errors.load",
+                    "portal.apiKeys.errors.create", "portal.apiKeys.errors.revoke", "portal.apiKeys.secret.title",
+                    "portal.apiKeys.secret.description", "portal.apiKeys.revoke.confirm");
         }
     }
 }

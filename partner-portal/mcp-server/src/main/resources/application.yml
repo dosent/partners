@@ -1,0 +1,34 @@
+server:
+  port: ${SERVER_PORT:8081}
+  tomcat:
+    max-http-form-post-size: 30MB
+    max-swallow-size: 30MB
+spring:
+  application:
+    name: partner-mcp-server
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        type: SYNC
+        annotation-scanner:
+          enabled: false
+        streamable-http:
+          mcp-endpoint: /mcp
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,mcpReadiness
+mcp:
+  backend:
+    timeout: ${MCP_BACKEND_TIMEOUT:PT10S}
+  request:
+    max-bytes: ${MCP_MAX_REQUEST_BYTES:31457280}

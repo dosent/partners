@@ -1,6 +1,7 @@
 import { expect, test, completePartnerOAuth, ensurePublishedTestContent, loginAsPartner, loginAsStaff } from './support/fixtures.js';
 import { isValidRussianInn, registrationContentFixture, syntheticPartnerData } from './support/test-data.js';
 import { E2E_BASE_URL } from './support/base-url.js';
+import { createPartnerMcpKey, openMcpSession, revokePartnerMcpKey } from './support/mcp-client.js';
 
 async function requestJson(request, path) {
   const response = await request.get(path);
@@ -117,6 +118,7 @@ test('staff approval makes the partner portal available without demo data', asyn
   const { staffContext, staffPage } = await prepareIsolatedStaffAccess(page);
   let partnerContext;
   let unrelatedPartnerContext;
+  let secondPartnerContext;
   try {
     const previousIds = await manualReviewIds(staffContext.request);
     const partner = syntheticPartnerData();
@@ -149,7 +151,7 @@ test('staff approval makes the partner portal available without demo data', asyn
       const response = await route.fetch();
       const content = await response.json();
       for (const key of Object.keys(content.strings ?? {})) {
-        if (key.startsWith('portal.profile.') || key.startsWith('portal.actions.') || key.startsWith('staffing.') || key === 'portal.errors.logout') delete content.strings[key];
+        if (key.startsWith('portal.profile.') || key.startsWith('portal.apiKeys.') || key.startsWith('portal.actions.') || key.startsWith('staffing.') || key === 'portal.errors.logout') delete content.strings[key];
       }
       expect(Object.keys(content.strings)).toHaveLength(50);
       await route.fulfill({ response, body: JSON.stringify(content) });
@@ -194,6 +196,103 @@ test('staff approval makes the partner portal available without demo data', asyn
     });
     expect(profile).not.toHaveProperty('taxIdentifier');
     expect(profile).not.toHaveProperty('inn');
+
+    const mcpKey = await createPartnerMcpKey(partnerContext.request);
+    const mcp = await openMcpSession(partnerContext.request, mcpKey.secret);
+    const listedTools = await mcp.call('tools/list');
+    expect(listedTools.status).toBe(200);
+    const toolNames = listedTools.payload.result.tools.map(tool => tool.name);
+    expect(toolNames).toContain('partner_profile_get');
+    expect(toolNames).toContain('partner_leads_board');
+    expect(toolNames).not.toContain('partner_api_key_list');
+
+    const profileCall = await mcp.call('tools/call', { name: 'partner_profile_get', arguments: {} });
+    expect(profileCall.payload.result.isError).not.toBe(true);
+    const mcpProfile = JSON.parse(profileCall.payload.result.content[0].text);
+    expect(mcpProfile).toMatchObject({ status: 200, result: { id: profile.id, fullName: partner.fullName } });
+
+    const boardCall = await mcp.call('tools/call', { name: 'partner_leads_board', arguments: { limitPerColumn: 20 } });
+    expect(boardCall.payload.result.isError).not.toBe(true);
+    expect(JSON.parse(boardCall.payload.result.content[0].text).status).toBe(200);
+
+    const leadCall = await mcp.call('tools/call', { name: 'partner_lead_create', arguments: {
+      companyName: `E2E company ${partner.id.slice(-8)}`,
+      requestSummary: 'MCP integration test request',
+      description: 'Synthetic partner MCP test data',
+    } });
+    expect(leadCall.payload.result.isError).not.toBe(true);
+    const createdLead = JSON.parse(leadCall.payload.result.content[0].text);
+    expect(createdLead.status).toBe(200);
+    expect(createdLead.result.companyName).toBe(`E2E company ${partner.id.slice(-8)}`);
+    const getLeadCall = await mcp.call('tools/call', { name: 'partner_lead_get', arguments: { leadId: createdLead.result.id } });
+    expect(JSON.parse(getLeadCall.payload.result.content[0].text)).toMatchObject({
+      status: 200, result: { id: createdLead.result.id, companyName: createdLead.result.companyName },
+    });
+
+    const attachmentCall = await mcp.call('tools/call', { name: 'partner_lead_create_with_attachment', arguments: {
+      request: {
+        companyName: `E2E attachment ${partner.id.slice(-8)}`,
+        requestSummary: 'MCP attachment integration test',
+        description: 'Synthetic partner MCP attachment test data',
+      },
+      attachment: {
+        filename: 'mcp-brief.pdf',
+        contentType: 'application/pdf',
+        base64: Buffer.from('%PDF-1.7\nsynthetic MCP E2E document').toString('base64'),
+      },
+    } });
+    const attachedLead = JSON.parse(attachmentCall.payload.result.content[0].text);
+    expect(attachmentCall.payload.result.isError).not.toBe(true);
+    expect(attachedLead.status).toBe(200);
+    expect(attachedLead.result.companyName).toBe(`E2E attachment ${partner.id.slice(-8)}`);
+    expect(attachedLead.result.attachments).toHaveLength(1);
+
+    const foreignLeadCall = await mcp.call('tools/call', { name: 'partner_lead_get', arguments: { leadId: '00000000-0000-0000-0000-000000000001' } });
+    expect(foreignLeadCall.payload.result.isError).toBe(true);
+    expect(JSON.parse(foreignLeadCall.payload.result.content[0].text).status).toBe(404);
+    const keyManagementHeaders = { 'X-Partner-API-Key': mcpKey.secret };
+    expect((await partnerContext.request.get('/api/v1/partner/api-keys', { headers: keyManagementHeaders })).status()).toBe(403);
+    expect((await partnerContext.request.post('/api/v1/partner/api-keys', {
+      headers: keyManagementHeaders, data: { name: 'Forbidden API-key management' },
+    })).status()).toBe(403);
+    expect((await partnerContext.request.delete(`/api/v1/partner/api-keys/${mcpKey.id}`, {
+      headers: keyManagementHeaders,
+    })).status()).toBe(403);
+
+    const secondPartner = syntheticPartnerData();
+    secondPartnerContext = await page.context().browser().newContext({ baseURL: E2E_BASE_URL });
+    const secondPartnerPage = await secondPartnerContext.newPage();
+    const previousApplicationIds = await manualReviewIds(staffContext.request);
+    await beginPartnerRegistration(secondPartnerPage, secondPartner);
+    await submitIndividualApplication(secondPartnerPage, secondPartner);
+    await expect(secondPartnerPage.getByRole('heading', { name: 'Ручная проверка' })).toBeVisible();
+    const secondApplicationId = await findSubmittedApplicationId(staffContext.request, previousApplicationIds);
+    const staffCsrf = await staffContext.request.get('/api/v1/auth/csrf').then(response => response.json());
+    const secondApproval = await staffContext.request.post(`/api/v1/admin/partner-applications/${secondApplicationId}/approve`, {
+      headers: { [staffCsrf.headerName ?? 'X-XSRF-TOKEN']: staffCsrf.token }, data: {},
+    });
+    expect(secondApproval.ok()).toBeTruthy();
+    const secondKey = await createPartnerMcpKey(secondPartnerContext.request, 'Second partner MCP');
+    const secondMcp = await openMcpSession(secondPartnerContext.request, secondKey.secret);
+    const foreignLead = await secondMcp.call('tools/call', {
+      name: 'partner_lead_get', arguments: { leadId: createdLead.result.id },
+    });
+    expect(foreignLead.payload.result.isError).toBe(true);
+    expect(JSON.parse(foreignLead.payload.result.content[0].text).status).toBe(404);
+    const foreignAttachment = await secondMcp.call('tools/call', {
+      name: 'partner_lead_attachment_download',
+      arguments: { leadId: attachedLead.result.id, attachmentId: attachedLead.result.attachments[0].id },
+    });
+    expect(foreignAttachment.payload.result.isError).toBe(true);
+    expect(JSON.parse(foreignAttachment.payload.result.content[0].text).status).toBe(404);
+    await revokePartnerMcpKey(secondPartnerContext.request, secondKey.id);
+
+    await revokePartnerMcpKey(partnerContext.request, mcpKey.id);
+    const revokedResponse = await partnerContext.request.post('http://localhost:18089/mcp', {
+      headers: { 'X-Partner-API-Key': mcpKey.secret, Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json' },
+      data: { jsonrpc: '2.0', id: 9, method: 'tools/list', params: {} },
+    });
+    expect(revokedResponse.status()).toBe(401);
 
     await approvedPartnerPage.getByRole('button', { name: 'Профиль' }).click();
     await expect(approvedPartnerPage.getByRole('heading', { name: 'Профиль' })).toBeVisible();
@@ -243,11 +342,24 @@ test('staff approval makes the partner portal available without demo data', asyn
       emailNotificationsEnabled: false,
       inAppNotificationsEnabled: true,
     });
+    await approvedPartnerPage.route('**/api/v1/public/registration-content/KZ', async route => {
+      const response = await route.fetch();
+      const content = await response.json();
+      for (const key of Object.keys(content.strings ?? {})) {
+        if (key.startsWith('portal.apiKeys.')) delete content.strings[key];
+      }
+      await route.fulfill({ response, body: JSON.stringify(content) });
+    });
     await approvedPartnerPage.getByLabel('E2E EN locale.label').selectOption('KZ');
     await approvedPartnerPage.getByRole('button', { name: 'E2E EN actions.save' }).click();
     await expect(approvedPartnerPage.getByRole('heading', { name: 'E2E KZ title' })).toBeVisible();
     await expect(approvedPartnerPage.getByRole('navigation', { name: 'E2E KZ Partner Portal' }).getByRole('button', { name: 'E2E KZ navigation' })).toBeVisible();
     await expect(approvedPartnerPage.getByLabel('E2E KZ locale.label')).toHaveValue('KZ');
+    await expect(approvedPartnerPage.getByRole('navigation', { name: 'E2E KZ Partner Portal' })
+      .getByRole('button', { name: 'E2E KZ apiKeys navigation' })).toHaveCount(0);
+    await expect(approvedPartnerPage.getByRole('navigation', { name: 'E2E KZ Partner Portal' })
+      .getByRole('button', { name: 'E2E KZ Leads' })).toBeVisible();
+    await approvedPartnerPage.unroute('**/api/v1/public/registration-content/KZ');
 
     let simulateMissingKzPublication = true;
     await approvedPartnerPage.route('**/api/v1/public/registration-content/KZ', async route => {
@@ -308,7 +420,7 @@ test('staff approval makes the partner portal available without demo data', asyn
     expect(await unrelatedUpdate.text()).not.toContain(changedEmail);
 
     await approvedPartnerPage.getByRole('button', { name: 'E2E KZ Leads' }).click();
-    await expect(approvedPartnerPage.getByRole('heading', { name: 'Здесь появятся ваши лиды' })).toBeVisible();
+    await expect(approvedPartnerPage.getByRole('button', { name: `Открыть лид ${createdLead.result.companyName}` })).toBeVisible();
     await expect(approvedPartnerPage.getByText('Демонстрационный аккаунт')).toHaveCount(0);
 
     await approvedPartnerPage.setViewportSize({ width: 390, height: 844 });
@@ -337,6 +449,7 @@ test('staff approval makes the partner portal available without demo data', asyn
     await staffContext.close();
     if (partnerContext) await partnerContext.close();
     if (unrelatedPartnerContext) await unrelatedPartnerContext.close();
+    if (secondPartnerContext) await secondPartnerContext.close();
   }
 });
 

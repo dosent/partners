@@ -36,8 +36,18 @@ async function assertFreshDatabase() {
   }
 }
 
+async function buildJar(command, args, cwd) {
+  try {
+    await exec(command, ['--offline', ...args], { cwd, maxBuffer: 10 * 1024 * 1024 });
+  } catch {
+    await exec(command, args, { cwd, maxBuffer: 10 * 1024 * 1024 });
+  }
+}
+
 export async function startE2eStack() {
   await compose('down', '-v', '--remove-orphans');
+  await buildJar('./gradlew', ['--no-daemon', 'bootJarE2e'], resolve(projectDir, 'backend'));
+  await buildJar(resolve(projectDir, 'backend', 'gradlew'), ['-p', 'mcp-server', '--no-daemon', 'bootJar'], projectDir);
   await compose('up', '--build', '--wait');
 
   const response = await fetch(`${E2E_BASE_URL}/`);

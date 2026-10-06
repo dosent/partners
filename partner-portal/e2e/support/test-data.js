@@ -135,6 +135,11 @@ export function registrationContentFixture(locale = 'RU') {
     'status.saved', 'errors.save', 'loading', 'errors.load', 'errors.localeUnavailable',
   ].map(key => [`portal.profile.${key}`, `E2E ${locale} ${key}`]));
   Object.assign(strings, profileValues);
+  Object.assign(strings, Object.fromEntries([
+    'navigation', 'title', 'description', 'empty', 'name.label', 'actions.create', 'actions.creating',
+    'actions.revoke', 'actions.cancel', 'status.created', 'status.revoked', 'loading', 'errors.load',
+    'errors.create', 'errors.revoke', 'secret.title', 'secret.description', 'revoke.confirm',
+  ].map(key => [`portal.apiKeys.${key}`, `E2E ${locale} apiKeys ${key}`])));
   if (locale !== 'RU') {
     strings['portal.title'] = `E2E ${locale} Partner Portal`;
     strings['portal.status.approved'] = `E2E ${locale} Approved`;
