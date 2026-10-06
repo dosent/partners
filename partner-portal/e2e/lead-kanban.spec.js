@@ -110,6 +110,175 @@ async function createLeadWithAttachment(request, partner, suffix, file, endpoint
   });
 }
 
+async function replaceStaffRoles(request, username, roles) {
+  const response = await request.put(`/api/v1/admin/staff-access/users/${encodeURIComponent(username)}/roles`, {
+    data: { roles }, headers: await csrfHeaders(request),
+  });
+  expect(response.status(), `replace roles for ${username}`).toBe(200);
+}
+
+test('staffing request assignment persists and enforces staff roles without partner disclosure', async ({ page }) => {
+  test.setTimeout(300_000);
+  const browser = page.context().browser();
+  const adminContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+  let approvedPartner;
+  let managerContext;
+  let unauthorizedContext;
+  try {
+    const adminPage = await adminContext.newPage();
+    await loginAsStaff(adminPage, 'ivan.neshin');
+    await ensurePublishedTestContent(adminContext.request);
+    const firstManager = uniqueFixtureId();
+    const secondManager = uniqueFixtureId();
+    const unauthorizedUsername = uniqueFixtureId();
+    await replaceStaffRoles(adminContext.request, firstManager, ['RESOURCE_MANAGER']);
+    await replaceStaffRoles(adminContext.request, secondManager, ['RESOURCE_MANAGER']);
+    await replaceStaffRoles(adminContext.request, unauthorizedUsername, ['PARTNER_MANAGER']);
+
+    const partner = syntheticPartnerData();
+    approvedPartner = await registerAndApprovePartner(browser, adminPage, partner);
+    const lead = await createLeadViaApi(approvedPartner.context.request, partner, `assignment-${partner.id.slice(-8)}`);
+    const partnerPage = approvedPartner.page;
+    await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
+      .getByRole('button', { name: 'Заявки на специалистов' }).click();
+    await partnerPage.getByRole('button', { name: 'Создать заявку' }).click();
+    await partnerPage.getByLabel(/Проект \/ лид/).selectOption(lead.id);
+    const title = `Backend assignment ${partner.id.slice(-8)}`;
+    await partnerPage.getByLabel(/Должность \/ роль/).fill(title);
+    await partnerPage.getByLabel(/Количество специалистов/).fill('2');
+    await partnerPage.getByLabel('Уровень').selectOption('Middle+');
+    await partnerPage.getByLabel(/Обязательные навыки и стек/).fill('Java, Spring Boot');
+    await partnerPage.getByLabel(/Задачи и ожидания/).fill('Разработка синтетического проекта для E2E.');
+    await partnerPage.getByLabel(/Загрузка, часов в неделю/).fill('40');
+    await partnerPage.getByLabel('Формат работы').selectOption('REMOTE');
+    await partnerPage.getByLabel('Город \/ страна').fill('Удалённо');
+    await partnerPage.getByLabel('Ожидаемая дата подключения').fill('2026-12-15');
+    await partnerPage.getByRole('button', { name: 'Отправить заявку' }).click();
+    await expect(partnerPage.getByText('Заявка сохранена')).toBeVisible();
+    const createdResponse = await approvedPartner.context.request.get('/api/v1/partner/staffing-requests');
+    expect(createdResponse.status()).toBe(200);
+    const createdItems = (await createdResponse.json()).items;
+    expect(createdItems).toHaveLength(1);
+    const staffingRequest = createdItems[0];
+    expect(staffingRequest.role.title).toBe(title);
+    const assignmentPath = `/api/v1/admin/staffing-requests/${staffingRequest.id}/assignment`;
+
+    managerContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+    const managerPage = await managerContext.newPage();
+    const managerSession = await loginAsStaff(managerPage, firstManager);
+    expect(managerSession.permissions).toContain('staffing.request.manage');
+    await managerPage.getByRole('button', { name: 'Заявки на специалистов' }).click();
+    await expect(managerPage).toHaveURL('/staff/staffing-requests');
+    const row = managerPage.getByRole('article').filter({ has: managerPage.getByRole('heading', { name: title, exact: true }) });
+    const selector = row.getByRole('combobox', { name: `Ответственный для заявки ${staffingRequest.number}` });
+    await expect(row).toContainText('Ответственный: Не назначен');
+    const initialQueueResponse = await managerContext.request.get('/api/v1/admin/staffing-requests');
+    expect(initialQueueResponse.status()).toBe(200);
+    const initialItem = (await initialQueueResponse.json()).items.find(item => item.id === staffingRequest.id);
+    expect(initialItem).toMatchObject({ assignedResourceManagerUsername: null, version: 0 });
+    const candidatesResponse = await managerContext.request.get('/api/v1/admin/staffing-requests/assignees');
+    expect(candidatesResponse.status()).toBe(200);
+    const candidates = await candidatesResponse.json();
+    expect(candidates).toEqual(expect.arrayContaining([
+      { username: firstManager, role: 'RESOURCE_MANAGER' },
+      { username: secondManager, role: 'RESOURCE_MANAGER' },
+    ]));
+    expect(candidates.every(candidate => candidate.role === 'RESOURCE_MANAGER')).toBe(true);
+    expect(candidates.map(candidate => candidate.username)).not.toContain(unauthorizedUsername);
+
+    for (const username of [uniqueFixtureId(), unauthorizedUsername]) {
+      const invalid = await managerContext.request.put(assignmentPath, {
+        data: { username, expectedVersion: 0 }, headers: await csrfHeaders(managerContext.request),
+      });
+      expect(invalid.status(), `reject ineligible assignee ${username}`).toBe(400);
+    }
+
+    unauthorizedContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+    const unauthorizedPage = await unauthorizedContext.newPage();
+    const unauthorizedSession = await loginAsStaff(unauthorizedPage, unauthorizedUsername);
+    expect(unauthorizedSession.accessState).toBe('ACTIVE');
+    expect(unauthorizedSession.permissions).not.toContain('staffing.request.manage');
+    await expect(unauthorizedPage.getByRole('button', { name: 'Заявки на специалистов' })).toHaveCount(0);
+    await unauthorizedPage.goto('/staff/staffing-requests');
+    await expect(unauthorizedPage.getByRole('heading', { name: 'Недостаточно прав' })).toBeVisible();
+    await expect(unauthorizedPage.getByRole('combobox')).toHaveCount(0);
+    for (const path of ['/api/v1/admin/staffing-requests', '/api/v1/admin/staffing-requests/assignees']) {
+      const denied = await unauthorizedContext.request.get(path);
+      expect(denied.status()).toBe(403);
+      expect(await denied.text()).not.toContain(title);
+    }
+    const deniedAssignment = await unauthorizedContext.request.put(assignmentPath, {
+      data: { username: firstManager, expectedVersion: 0 }, headers: await csrfHeaders(unauthorizedContext.request),
+    });
+    expect(deniedAssignment.status()).toBe(403);
+
+    for (const [username, version] of [[firstManager, 1], [secondManager, 2], [null, 3], [secondManager, 4]]) {
+      if (username === null) await row.getByRole('button', { name: 'Снять назначение' }).click();
+      else {
+        await selector.selectOption(username);
+        await row.getByRole('button', { name: 'Сохранить назначение' }).click();
+      }
+      await expect(managerPage.getByRole('status')).toContainText(username === null ? 'снято' : 'сохранён');
+      await managerPage.reload();
+      await expect(row).toContainText(`Ответственный: ${username ?? 'Не назначен'}`);
+      await expect(selector).toHaveValue(username ?? '');
+      const queueResponse = await managerContext.request.get('/api/v1/admin/staffing-requests');
+      expect(queueResponse.status()).toBe(200);
+      expect((await queueResponse.json()).items.find(item => item.id === staffingRequest.id))
+        .toMatchObject({ assignedResourceManagerUsername: username, version });
+      // The partner projection must remain private even while an assignment exists.
+      for (const path of ['/api/v1/partner/staffing-requests', `/api/v1/partner/staffing-requests/${staffingRequest.id}`]) {
+        const partnerResponse = await approvedPartner.context.request.get(path);
+        expect(partnerResponse.status()).toBe(200);
+        const projection = await partnerResponse.json();
+        expect(JSON.stringify(projection)).not.toContain('assignedResourceManagerUsername');
+        expect(JSON.stringify(projection)).not.toContain(firstManager);
+        expect(JSON.stringify(projection)).not.toContain(secondManager);
+      }
+    }
+
+    await replaceStaffRoles(adminContext.request, secondManager, []);
+    await managerPage.reload();
+    await expect(row).toContainText(`Ответственный: ${secondManager}`);
+    await expect(selector).toHaveValue(secondManager);
+    await expect(selector.locator(`option[value="${secondManager}"]`)).toBeDisabled();
+    await expect(row.getByRole('button', { name: 'Сохранить назначение' })).toBeDisabled();
+    const revokedCandidates = await managerContext.request.get('/api/v1/admin/staffing-requests/assignees');
+    expect(revokedCandidates.status()).toBe(200);
+    expect((await revokedCandidates.json()).map(candidate => candidate.username)).not.toContain(secondManager);
+    const preservedQueue = await managerContext.request.get('/api/v1/admin/staffing-requests');
+    expect(preservedQueue.status()).toBe(200);
+    expect((await preservedQueue.json()).items.find(item => item.id === staffingRequest.id))
+      .toMatchObject({ assignedResourceManagerUsername: secondManager, version: 4 });
+    const revokedAssignment = await managerContext.request.put(assignmentPath, {
+      data: { username: secondManager, expectedVersion: 4 }, headers: await csrfHeaders(managerContext.request),
+    });
+    expect(revokedAssignment.status()).toBe(400);
+    await selector.selectOption(firstManager);
+    await row.getByRole('button', { name: 'Сохранить назначение' }).click();
+    await expect(managerPage.getByRole('status')).toContainText('сохранён');
+    await managerPage.reload();
+    await expect(row).toContainText(`Ответственный: ${firstManager}`);
+    const replacedQueue = await managerContext.request.get('/api/v1/admin/staffing-requests');
+    expect(replacedQueue.status()).toBe(200);
+    expect((await replacedQueue.json()).items.find(item => item.id === staffingRequest.id))
+      .toMatchObject({ assignedResourceManagerUsername: firstManager, version: 5 });
+    await row.getByRole('button', { name: 'Снять назначение' }).click();
+    await expect(managerPage.getByRole('status')).toContainText('снято');
+    await managerPage.reload();
+    await expect(row).toContainText('Ответственный: Не назначен');
+    const clearedQueue = await managerContext.request.get('/api/v1/admin/staffing-requests');
+    expect(clearedQueue.status()).toBe(200);
+    expect((await clearedQueue.json()).items.find(item => item.id === staffingRequest.id))
+      .toMatchObject({ assignedResourceManagerUsername: null, version: 6 });
+  } finally {
+    if (unauthorizedContext) await unauthorizedContext.close().catch(() => {});
+    if (managerContext) await managerContext.close().catch(() => {});
+    if (approvedPartner) await approvedPartner.context.close().catch(() => {});
+    await adminContext.close().catch(() => {});
+  }
+});
+
 test('approved partner creates and manages leads on the Kanban board safely', async ({ page }) => {
   test.setTimeout(300_000);
   const browser = page.context().browser();
