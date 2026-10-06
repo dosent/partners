@@ -16,6 +16,9 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,6 +39,21 @@ class ApiDocumentationConfigTest {
                 "partner_lead_get", "partner_lead_attachment_download", "partner_lead_message"), java.util.Set.copyOf(leadTools));
         assertFalse(Arrays.stream(PartnerApiKeyController.class.getDeclaredMethods()).anyMatch(method -> method.isAnnotationPresent(McpTool.class)));
         assertFalse(Arrays.stream(PartnerMcpAccessController.class.getDeclaredMethods()).anyMatch(method -> method.isAnnotationPresent(McpTool.class)));
+    }
+
+    @Test
+    void everyPublishedPartnerToolDeclaresItsResponseMediaType() {
+        var methods = java.util.stream.Stream.concat(Arrays.stream(PartnerProfileController.class.getDeclaredMethods()),
+                Arrays.stream(PartnerLeadController.class.getDeclaredMethods()))
+                .filter(method -> method.isAnnotationPresent(McpTool.class)).toList();
+        for (var method : methods) {
+            String[] produces = method.isAnnotationPresent(GetMapping.class) ? method.getAnnotation(GetMapping.class).produces()
+                    : method.isAnnotationPresent(PostMapping.class) ? method.getAnnotation(PostMapping.class).produces()
+                    : method.isAnnotationPresent(PutMapping.class) ? method.getAnnotation(PutMapping.class).produces() : new String[0];
+            assertEquals(1, produces.length, method.getName() + " must declare exactly one response media type");
+            assertEquals("partner_lead_attachment_download".equals(method.getAnnotation(McpTool.class).name())
+                            ? "application/octet-stream" : "application/json", produces[0], method.getName());
+        }
     }
 
     @Test

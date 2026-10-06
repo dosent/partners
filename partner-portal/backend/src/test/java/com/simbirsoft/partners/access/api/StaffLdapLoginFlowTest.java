@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simbirsoft.partners.access.application.StaffAccessDeniedException;
+import com.simbirsoft.partners.access.application.PartnerApiKeyStore;
 import com.simbirsoft.partners.access.application.StaffAuthenticator;
 import com.simbirsoft.partners.access.application.StaffAuthenticationFailedException;
 import com.simbirsoft.partners.access.application.StaffIdentity;
@@ -57,6 +58,7 @@ class StaffLdapLoginFlowTest {
     @MockitoBean(name = "jpaRegistrationContentStore") private RegistrationContentStore registrationContentStore;
     @MockitoBean private PartnerApplicationStore partnerApplicationStore;
     @MockitoBean(name = "jpaPartnerProfileStore") private PartnerProfileStore partnerProfileStore;
+    @MockitoBean(name = "jpaPartnerApiKeyStore") private PartnerApiKeyStore partnerApiKeyStore;
     @MockitoBean(name = "jpaApprovedPartnerProfileSource") private ApprovedPartnerProfileSource approvedPartnerProfileSource;
     @MockitoBean private PartnerProfileChangeAudit partnerProfileChangeAudit;
 

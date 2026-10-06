@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,7 +26,7 @@ public class PartnerProfileController {
     public PartnerProfileController(PartnerProfileService service) { this.service = service; }
 
     @McpTool(name="partner_profile_get", description="Get the authenticated partner profile and settings", behavior=McpToolBehavior.READ_ONLY)
-    @GetMapping("/me")
+    @GetMapping(value = "/me", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Получить собственный профиль партнёра")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Профиль текущего партнёра"),
             @ApiResponse(responseCode = "401", description = "Требуется партнёрская сессия"),
@@ -35,7 +36,7 @@ public class PartnerProfileController {
     }
 
     @McpTool(name="partner_profile_update_settings", description="Update the authenticated partner contact details and preferences", behavior=McpToolBehavior.MUTATING)
-    @PutMapping("/me/settings")
+    @PutMapping(value = "/me/settings", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Изменить контактные данные и настройки собственного профиля")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Профиль изменён"),
             @ApiResponse(responseCode = "400", description = "Некорректные настройки профиля"),

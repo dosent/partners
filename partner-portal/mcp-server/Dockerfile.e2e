@@ -1,0 +1,7 @@
+FROM eclipse-temurin:21-jre-alpine
+RUN addgroup -S app && adduser -S -G app app
+WORKDIR /app
+COPY build/libs/partner-mcp-server-*.jar /app/mcp-server.jar
+USER app
+EXPOSE 8081
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/mcp-server.jar"]

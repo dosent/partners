@@ -204,12 +204,12 @@
 - `compose.e2e.yaml` запускает настоящий frontend, backend, PostgreSQL и отдельный MCP container с фиктивными e2e параметрами.
 - E2E использует `loginAsPartner(page, subject)` и текущую тестовую публикацию контента; MCP JSON-RPC requests используют официальный протокол и `X-Partner-API-Key`.
 
-- [ ] Добавить e2e успешного пути: партнёр входит, создаёт ключ через кабинет, видит его один раз, подключается к `/mcp`, запрашивает `tools/list`, вызывает профиль/свой лид и отзывает ключ.
-- [ ] Добавить e2e проверки: нет ключа/отозванный ключ → `401`; второй партнёр не получает первый профиль/лид; API-key не может читать или отзывать список ключей; multipart attachment путь отрабатывает корректным MCP результатом.
-- [ ] Добавить отдельный `mcp-server` README: Compose запуск, endpoint, custom header configuration, подключение тестового клиента, как backend-изменение с `@McpTool` попадает в каталог, когда нужен custom adapter, обновление каталога и оговорка по совместимости MCP-клиентов.
-- [ ] Убедиться, что документация говорит о ключе как о статическом API key, не как о MCP OAuth access token, и не советует помещать его в URL/логи.
-- [ ] Запустить `openspec validate partner-mcp-service --strict`, `cd backend && ./gradlew test`, `./backend/gradlew -p mcp-server test bootJar`, `npm run build`, применимые `node --test` проверки и обязательный `npm run test:e2e` (Compose с PostgreSQL). Исправлять ошибки и повторять e2e до успеха.
-- [ ] Выполнить применимые ArchUnit/API/security/translation checks, проверить `git diff --check`, отсутствие секретов/демо-данных в production образе и статус `.env`/`.env.example`.
+- [x] Добавить e2e успешного пути: партнёр входит, создаёт ключ через кабинет, видит его один раз, подключается к `/mcp`, запрашивает `tools/list`, вызывает профиль/свой лид и отзывает ключ.
+- [x] Добавить e2e проверки: нет ключа/отозванный ключ → `401`; второй партнёр не получает первый профиль/лид; API-key не может читать или отзывать список ключей; multipart attachment путь отрабатывает корректным MCP результатом.
+- [x] Добавить отдельный `mcp-server` README: Compose запуск, endpoint, custom header configuration, подключение тестового клиента, как backend-изменение с `@McpTool` попадает в каталог, когда нужен custom adapter, обновление каталога и оговорка по совместимости MCP-клиентов.
+- [x] Убедиться, что документация говорит о ключе как о статическом API key, не как о MCP OAuth access token, и не советует помещать его в URL/логи.
+- [x] Запустить `openspec validate partner-mcp-service --strict`, `cd backend && ./gradlew test`, `./backend/gradlew -p mcp-server test bootJar`, `npm run build`, применимые `node --test` проверки и обязательный `npm run test:e2e` (Compose с PostgreSQL). Исправлять ошибки и повторять e2e до успеха.
+- [x] Выполнить применимые ArchUnit/API/security/translation checks, проверить `git diff --check`, отсутствие секретов/демо-данных в production образе и статус `.env`/`.env.example`.
 - [ ] Закоммитить документацию и e2e: `test: verify partner MCP access end to end`.
 - [ ] После успешных проверок интегрировать feature-ветку отдельным коммитом в локальную `main`; не выполнять push.
 

@@ -34,8 +34,10 @@ public final class PartnerApiKeyAuthenticationFilter extends OncePerRequestFilte
             }
             var value=identity.get();
             var context=SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(new PartnerApiKeyAuthenticationToken(value.id(),
-                    new PartnerPrincipal(value.provider(), value.subject())));
+            var authentication = new PartnerApiKeyAuthenticationToken(value.id(),
+                    new PartnerPrincipal(value.provider(), value.subject()));
+            authentication.setDetails(value.id());
+            context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);
         }
         chain.doFilter(request, response);

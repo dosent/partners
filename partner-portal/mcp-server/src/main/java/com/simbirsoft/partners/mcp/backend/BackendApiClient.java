@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -28,6 +29,7 @@ public class BackendApiClient {
     private final ObjectMapper mapper;
     private final Duration timeout;
 
+    @Autowired
     public BackendApiClient(WebClient.Builder builder,ObjectMapper mapper,
             @Value("${BACKEND_API_URL}") String baseUrl,
             @Value("${mcp.backend.timeout:PT10S}") Duration timeout) {

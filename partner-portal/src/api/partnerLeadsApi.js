@@ -40,7 +40,7 @@ export async function createPartnerLead(payload, attachment = null) {
     const body = new FormData();
     body.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }), 'request.json');
     body.append('attachment', attachment, attachment.name);
-    return decode(await fetch(API, {
+    return decode(await fetch(`${API}/with-attachment`, {
       method: 'POST', credentials: 'include', headers, body,
     }));
   }

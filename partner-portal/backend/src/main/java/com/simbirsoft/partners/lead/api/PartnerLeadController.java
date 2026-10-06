@@ -42,7 +42,7 @@ public class PartnerLeadController {
     public PartnerLeadController(LeadService service, LeadAttachmentPort attachments) { this.service=service; this.attachments=attachments; }
 
     @McpTool(name="partner_leads_board", description="List the authenticated partner leads by status", behavior=McpToolBehavior.READ_ONLY)
-    @GetMapping("/board")
+    @GetMapping(value = "/board", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary="Загрузить партнёрскую Kanban-доску")
     public LeadBoardResponse board(@AuthenticationPrincipal PartnerPrincipal principal,
             @RequestParam(required=false) String query,@RequestParam(required=false) Instant updatedFrom,
@@ -58,7 +58,7 @@ public class PartnerLeadController {
     }
 
     @McpTool(name="partner_lead_create", description="Create a partner lead from structured fields", behavior=McpToolBehavior.MUTATING)
-    @PostMapping
+    @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary="Создать партнёрский лид")
     public LeadDetailResponse create(@AuthenticationPrincipal PartnerPrincipal principal,@Valid @RequestBody CreateLeadRequest request) {
         var lead=service.create(principal,request.command());
@@ -66,7 +66,8 @@ public class PartnerLeadController {
     }
 
     @McpTool(name="partner_lead_create_with_attachment", description="Create a partner lead and attach a supported document", behavior=McpToolBehavior.MUTATING)
-    @PostMapping(consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/with-attachment", consumes=MediaType.MULTIPART_FORM_DATA_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary="Создать партнёрский лид с проверяемым вложением")
     public LeadDetailResponse createWithAttachment(@AuthenticationPrincipal PartnerPrincipal principal,
             @Valid @RequestPart("request") CreateLeadRequest request,
@@ -84,7 +85,7 @@ public class PartnerLeadController {
     }
 
     @McpTool(name="partner_lead_get", description="Get one owned partner lead with its history", behavior=McpToolBehavior.READ_ONLY)
-    @GetMapping("/{leadId}")
+    @GetMapping(value = "/{leadId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary="Получить детали собственного лида")
     public LeadDetailResponse detail(@AuthenticationPrincipal PartnerPrincipal principal,@PathVariable UUID leadId) {
         var lead=service.find(principal,leadId);
@@ -93,7 +94,7 @@ public class PartnerLeadController {
     }
 
     @McpTool(name="partner_lead_attachment_download", description="Read an owned partner lead attachment", behavior=McpToolBehavior.READ_ONLY)
-    @GetMapping("/{leadId}/attachments/{attachmentId}")
+    @GetMapping(value = "/{leadId}/attachments/{attachmentId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     @Operation(summary="Скачать своё проверенное вложение к лиду")
     public ResponseEntity<byte[]> download(@AuthenticationPrincipal PartnerPrincipal principal,
             @PathVariable UUID leadId, @PathVariable UUID attachmentId) {
@@ -106,7 +107,7 @@ public class PartnerLeadController {
     }
 
     @McpTool(name="partner_lead_message", description="Send a message about an owned partner lead", behavior=McpToolBehavior.MUTATING)
-    @PostMapping("/{leadId}/messages")
+    @PostMapping(value = "/{leadId}/messages", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary="Отправить партнёрское сообщение менеджеру")
     public LeadMessageResponse message(@AuthenticationPrincipal PartnerPrincipal principal,@PathVariable UUID leadId,
             @Valid @RequestBody LeadMessageRequest request) {

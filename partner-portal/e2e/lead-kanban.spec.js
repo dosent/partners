@@ -5,6 +5,7 @@ import { E2E_BASE_URL } from './support/base-url.js';
 const api = {
   applications: '/api/v1/admin/partner-applications?page=0&size=100',
   leads: '/api/v1/partner/leads',
+  leadsWithAttachment: '/api/v1/partner/leads/with-attachment',
   board: '/api/v1/partner/leads/board',
 };
 
@@ -100,7 +101,7 @@ async function createLeadViaApi(request, partner, suffix) {
 }
 
 async function createLeadWithAttachment(request, partner, suffix, file) {
-  return request.post(api.leads, {
+  return request.post(api.leadsWithAttachment, {
     headers: await csrfHeaders(request),
     multipart: {
       request: { name: 'request.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(newLead(partner, suffix))) },

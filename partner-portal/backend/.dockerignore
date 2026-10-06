@@ -1,6 +1,11 @@
 .git
 .gradle
 build
+!build/
+build/**
+!build/libs/
+build/libs/**
+!build/libs/*-e2e.jar
 .env
 .env.*
 .idea

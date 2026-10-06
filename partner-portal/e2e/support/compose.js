@@ -38,6 +38,14 @@ async function assertFreshDatabase() {
 
 export async function startE2eStack() {
   await compose('down', '-v', '--remove-orphans');
+  await exec('./gradlew', ['--offline', '--no-daemon', 'bootJarE2e'], {
+    cwd: resolve(projectDir, 'backend'),
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  await exec(resolve(projectDir, 'backend', 'gradlew'), ['--offline', '-p', 'mcp-server', '--no-daemon', 'bootJar'], {
+    cwd: projectDir,
+    maxBuffer: 10 * 1024 * 1024,
+  });
   await compose('up', '--build', '--wait');
 
   const response = await fetch(`${E2E_BASE_URL}/`);
