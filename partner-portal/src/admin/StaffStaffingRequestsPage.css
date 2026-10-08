@@ -1,0 +1,23 @@
+.staff-staffing{width:100%;min-width:0;padding:20px 0 32px}
+.staff-staffing-toolbar,.staff-staffing-pagination,.staff-staffing-pagination>div{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.staff-staffing-toolbar{margin:16px 0 20px;color:#697791;font-size:14px}
+.staff-staffing-state{min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:1px dashed #d7dfeb;border-radius:8px;background:#fff;color:#71809a;text-align:center}
+.staff-staffing-state strong{color:#253653;font-size:16px}
+.staff-staffing-list{border:1px solid #e3e8f1;border-radius:8px;background:#fff}
+.staff-staffing-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:28px;padding:22px 24px;border-bottom:1px solid #edf0f5}
+.staff-staffing-row:last-child{border-bottom:0}
+.staff-staffing-summary{min-width:0;overflow-wrap:anywhere}
+.staff-staffing-summary h2{font-size:18px;line-height:1.4;letter-spacing:0;color:#243451}
+.staff-staffing-summary>p:not(.staff-eyebrow){margin-top:7px;font-size:13px;line-height:1.6;color:#697791}
+.staff-staffing-summary strong{color:#33445f}
+.staff-staffing-assignment{min-width:0;display:flex;flex-direction:column;gap:9px;justify-content:center}
+.staff-staffing-assignment label{color:#53627e;font-size:13px;font-weight:600}
+.staff-staffing-assignment select{min-width:0;max-width:100%;min-height:44px;text-overflow:ellipsis}
+.staff-staffing-actions{display:flex;flex-wrap:wrap;gap:10px}
+.staff-staffing-actions button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;font-size:13px}
+.staff-staffing-actions svg{flex-shrink:0}
+.staff-staffing-note{margin:0 0 16px;font-size:14px;color:#697791}
+.staff-staffing-pagination{margin-top:16px;font-size:13px;color:#697791}
+.staff-staffing-pagination .staff-secondary{min-height:38px;border:1px solid #e1e6ef;border-radius:7px;background:#fff}
+.staff-staffing button:focus-visible{outline:3px solid #80aaff;outline-offset:2px}
+@media(max-width:700px){.staff-staffing{padding-top:10px}.staff-staffing .staff-admin-top{align-items:flex-start;gap:12px}.staff-staffing h1{font-size:24px;overflow-wrap:anywhere;letter-spacing:0}.staff-staffing-row{grid-template-columns:minmax(0,1fr);gap:18px;padding:18px 16px}.staff-staffing-actions{flex-direction:column}.staff-staffing-actions button{width:100%;padding:10px 12px}.staff-staffing-pagination{align-items:flex-start;flex-direction:column}.staff-staffing-pagination>div{width:100%}.staff-staffing-toolbar{gap:8px}}

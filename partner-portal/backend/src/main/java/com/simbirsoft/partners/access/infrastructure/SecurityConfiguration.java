@@ -59,6 +59,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/admin/partner-applications/**")
                         .hasAuthority("partner.application.read")
                         .requestMatchers("/api/v1/admin/leads/**").hasAuthority("lead.manage")
+                        .requestMatchers("/api/v1/admin/staffing-requests/**").hasAuthority("staffing.request.manage")
                         .requestMatchers("/api/v1/admin/registration-content/**").hasAuthority("localization.manage")
                         .requestMatchers("/api/v1/admin/staff-access/**").hasAuthority("staff.access.manage")
                         .anyRequest().authenticated())

@@ -16,6 +16,14 @@ public class StaffAccessService implements StaffRoleLookup {
     public Set<StaffRole> rolesFor(String username) { return grants.rolesFor(normalize(username)); }
 
     @Transactional(readOnly = true)
+    public List<String> usernamesWithRole(StaffRole role) {
+        return grants.usernamesWithRole(role).stream()
+                .map(StaffAccessService::normalize)
+                .sorted()
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<StaffRoleAssignment> usersWithRoles() { return grants.usersWithRoles(); }
 
     public Set<StaffPermission> permissionsFor(String username) {

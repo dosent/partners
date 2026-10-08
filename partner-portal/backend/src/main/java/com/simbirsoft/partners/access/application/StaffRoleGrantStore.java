@@ -5,6 +5,7 @@ import java.util.List;
 
 public interface StaffRoleGrantStore {
     Set<StaffRole> rolesFor(String username);
+    List<String> usernamesWithRole(StaffRole role);
     List<StaffAccessService.StaffRoleAssignment> usersWithRoles();
     void replaceRoles(String username, Set<StaffRole> roles, String actor);
 }

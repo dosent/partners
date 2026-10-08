@@ -61,7 +61,17 @@ class StaffingRequestTest {
                 Instant.parse("2026-10-05T00:00:00Z"));
 
         assertThat(request.status()).isEqualTo(StaffingRequestStatus.NEW);
+        assertThat(request.assignedResourceManagerUsername()).isNull();
         assertThat(request.role().requiredSkills()).containsExactly("Java", "Spring");
+
+        Instant changedAt = Instant.parse("2026-10-06T00:00:00Z");
+        var assigned = request.withAssignee("resource.manager", changedAt);
+        assertThat(assigned.assignedResourceManagerUsername()).isEqualTo("resource.manager");
+        assertThat(assigned.updatedAt()).isEqualTo(changedAt);
+        assertThat(assigned.id()).isEqualTo(request.id());
+        assertThat(assigned.version()).isEqualTo(request.version());
+        assertThat(request.assignedResourceManagerUsername()).isNull();
+        assertThat(assigned.withAssignee(null, changedAt).assignedResourceManagerUsername()).isNull();
     }
 
     private static StaffingRequest.RoleRequirements role(int headcount, List<String> skills) {
