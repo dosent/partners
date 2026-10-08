@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowClockwise, ArrowDown, ArrowUp, FloppyDisk, Globe, UploadSimple } from '@phosphor-icons/react';
 import { getRegistrationContentAdmin, publishRegistrationContent, saveRegistrationContentDraft } from '../api/registrationContentAdminApi';
 import { partnerProfileContentDefaults } from '../registration/partnerProfileContentDefaults.js';
+import { STAFFING_TEXT_KEYS, STAFFING_FALLBACK_COPY } from '../partner/staffingRequestContent.js';
 import './RegistrationContentPage.css';
 
 const offerTypes = [
@@ -34,6 +35,7 @@ const requiredKeys = [
   'portal.profile.actions.save', 'portal.profile.actions.saving', 'portal.profile.status.saved',
   'portal.profile.errors.save', 'portal.profile.loading', 'portal.profile.errors.load',
   'portal.profile.errors.localeUnavailable',
+  ...STAFFING_TEXT_KEYS.map(key => `staffing.${key}`),
 ];
 const labels = {
   'registration.title': 'Заголовок регистрации',
@@ -95,6 +97,7 @@ const labels = {
   'portal.profile.errors.load': 'Ошибка загрузки профиля',
   'portal.profile.errors.localeUnavailable': 'Сообщение: для выбранного языка нет опубликованного содержимого',
 };
+for (const key of STAFFING_TEXT_KEYS) labels[`staffing.${key}`] = `Заявки на специалистов: ${key}`;
 const defaultStrings = {
   'registration.title': 'Регистрация партнёра',
   'registration.types.individual': 'Физическое лицо',
@@ -163,6 +166,7 @@ function normalizeDraft(value = {}, locale = 'ru') {
   const strings = { ...empty.strings, ...(value.strings ?? {}) };
   if (locale === 'ru') {
     for (const [key, fallback] of Object.entries(defaultStrings)) strings[key] = useDefaultWhenEmpty(strings[key], fallback);
+    for (const [key, fallback] of Object.entries(STAFFING_FALLBACK_COPY.RU)) strings[key] = useDefaultWhenEmpty(strings[key], fallback);
   }
 
   const offers = { ...empty.offers, ...(value.offers ?? {}) };
@@ -238,6 +242,12 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
   async function publish() {
     setBusy(true); setError(''); setNotice(''); setMissing([]);
     try {
+      const missingStrings = requiredKeys.filter(key => !draft.strings?.[key]?.trim());
+      if (missingStrings.length) {
+        setMissing(missingStrings);
+        setError('Публикация невозможна: заполните обязательные материалы ниже.');
+        return;
+      }
       await publishRegistrationContent(locale, state?.draftVersion ?? 0);
       await loadLocale(locale, 'Новая версия опубликована.');
       setMode('published');
