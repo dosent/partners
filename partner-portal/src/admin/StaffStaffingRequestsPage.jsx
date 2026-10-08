@@ -14,7 +14,7 @@ export function StaffStaffingRequestsPage({ session, onBack, onLogout }) {
   const canManage = (session.permissions ?? []).includes('staffing.request.manage');
   const [queue, setQueue] = useState(null);
   const [assignees, setAssignees] = useState([]);
-  const [selection, setSelection] = useState({});
+  const [drafts, setDrafts] = useState({});
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState(null);
@@ -33,9 +33,9 @@ export function StaffStaffingRequestsPage({ session, onBack, onLogout }) {
       if (requestId !== loadId.current) return;
       setQueue(result); setPage(result.page);
       setAssignees(candidates.filter(candidate => candidate.role === 'RESOURCE_MANAGER'));
-      setSelection(current => Object.fromEntries(result.items.map(item => [item.id,
-        current[item.id] ?? item.assignedResourceManagerUsername ?? '',
-      ])));
+      setDrafts(current => Object.fromEntries(result.items
+        .filter(item => Object.hasOwn(current, item.id))
+        .map(item => [item.id, current[item.id]])));
     } catch (requestError) {
       if (requestId === loadId.current) setError(requestError.message);
     } finally {
@@ -56,7 +56,11 @@ export function StaffStaffingRequestsPage({ session, onBack, onLogout }) {
       setQueue(current => ({ ...current,
         items: current.items.map(row => row.id === updated.id ? updated : row),
       }));
-      setSelection(current => ({ ...current, [item.id]: updated.assignedResourceManagerUsername ?? '' }));
+      setDrafts(current => {
+        const next = { ...current };
+        delete next[item.id];
+        return next;
+      });
       setNotice(username === null ? `Назначение заявки ${item.number} снято.`
         : `Ответственный для заявки ${item.number} сохранён.`);
     } catch (requestError) {
@@ -88,8 +92,8 @@ export function StaffStaffingRequestsPage({ session, onBack, onLogout }) {
       {assignees.length === 0 && <p className="staff-staffing-note">Нет сотрудников с ролью Resource Manager для назначения.</p>}
       <div className="staff-staffing-list" aria-label="Очередь заявок на специалистов" aria-busy={busy}>
         {queue.items.map(item => {
-          const selected = selection[item.id] ?? '';
           const current = item.assignedResourceManagerUsername ?? '';
+          const selected = drafts[item.id] ?? current;
           const eligible = assignees.some(candidate => candidate.username === selected);
           return <article className="staff-staffing-row" key={item.id}>
             <div className="staff-staffing-summary"><p className="staff-eyebrow">{item.number}</p>
@@ -99,7 +103,15 @@ export function StaffStaffingRequestsPage({ session, onBack, onLogout }) {
             <div className="staff-staffing-assignment"><label htmlFor={`assignee-${item.id}`}>Resource Manager</label>
               <select id={`assignee-${item.id}`} aria-label={`Ответственный для заявки ${item.number}`}
                 value={selected} disabled={busy || assignees.length === 0}
-                onChange={event => setSelection(values => ({ ...values, [item.id]: event.target.value }))}>
+                onChange={event => {
+                  const value = event.target.value;
+                  setDrafts(values => {
+                    const next = { ...values };
+                    if (value === current) delete next[item.id];
+                    else next[item.id] = value;
+                    return next;
+                  });
+                }}>
                 <option value="">Выберите сотрудника</option>
                 {selected && !eligible && <option value={selected} disabled>{selected} (недоступен для назначения)</option>}
                 {assignees.map(candidate => <option value={candidate.username} key={candidate.username}>{candidate.username}</option>)}
