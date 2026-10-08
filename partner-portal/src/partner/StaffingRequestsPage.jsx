@@ -10,27 +10,6 @@ const initial = () => ({ leadId: '', title: '', headcount: '1', grade: '', requi
   screeningRequired: false, cvRequired: true });
 const splitSkills = value => value.split(/[,\n]/).map(skill => skill.trim()).filter(Boolean);
 const dateLabel = (value, locale) => value ? new Intl.DateTimeFormat(({ RU: 'ru-RU', KZ: 'kk-KZ', EN: 'en-US' })[locale] ?? 'ru-RU', { dateStyle: 'medium' }).format(new Date(value)) : null;
-export const STAFFING_TEXT_KEYS = [
-  'staffing.list.eyebrow','staffing.list.title','staffing.list.description','staffing.list.create','staffing.list.loading',
-  'staffing.list.emptyTitle','staffing.list.emptyDescription','staffing.list.refresh','staffing.status.NEW',
-  'staffing.form.back','staffing.form.eyebrow','staffing.form.title','staffing.form.description',
-  'staffing.form.context','staffing.form.project','staffing.form.projectPlaceholder','staffing.form.projectHelp','staffing.form.role',
-  'staffing.form.position','staffing.form.headcount','staffing.form.grade','staffing.form.chooseGrade',
-  'staffing.form.requiredSkills','staffing.form.skillsHelp','staffing.form.preferredSkills','staffing.form.tasks',
-  'staffing.form.work','staffing.form.hours','staffing.form.workMode','staffing.form.remote',
-  'staffing.form.hybrid','staffing.form.office','staffing.form.location','staffing.form.outsideRussia',
-  'staffing.form.flexibleDate','staffing.form.desiredDate','staffing.form.selection','staffing.form.language',
-  'staffing.form.noLanguage','staffing.form.languageLevel','staffing.form.chooseLanguageLevel',
-  'staffing.form.interview','staffing.form.screening','staffing.form.cv','staffing.form.files',
-  'staffing.form.optional','staffing.form.brief','staffing.form.cvExample','staffing.form.fileHelp',
-  'staffing.form.cancel','staffing.form.submit','staffing.form.saving','staffing.form.invalidFile',
-  'staffing.success.eyebrow','staffing.success.status','staffing.success.list','staffing.success.new',
-  'staffing.success.uploadFailed','staffing.success.retryUpload','staffing.errors.retry','staffing.list.flexibleDate',
-  'staffing.form.languageEnglish','staffing.form.languageRussian','staffing.form.languageKazakh',
-  'staffing.errors.validation','staffing.errors.unavailable','staffing.errors.submit','staffing.errors.upload','staffing.list.more',
-  'staffing.form.positionPlaceholder','staffing.form.nativeLanguage','staffing.errors.field','staffing.list.submitted','staffing.list.files','staffing.form.continueWithoutFile',
-];
-
 export function StaffingRequestsPage({ text = key => key, locale = 'RU' }) {
   const t = key => text(`staffing.${key}`);
   const [items, setItems] = useState([]);
