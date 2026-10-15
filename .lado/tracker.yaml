@@ -1,0 +1,10 @@
+# Проект Partners; доска «Новая доска».
+board: 85592152-a79d-434a-b428-7b97d5452888
+statuses:
+  backlog: Бэклог
+  ready: Готово к работе
+  in progress: В работе
+  review: Ревью
+  waiting for release: Ожидает релиза
+  done: Готово
+  blocked: Заблокировано
