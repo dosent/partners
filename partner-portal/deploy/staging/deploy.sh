@@ -80,15 +80,23 @@ if [[ ! $port =~ ^[0-9]+$ ]] || ! curl --fail --silent --output /dev/null --conn
   health_status
   fail 'Frontend smoke check failed'
 fi
-# Keep current plus three most recently deployed previous SHA directories.
+# Keep current plus three previous successful activations; failed attempts
+# must never displace a known-good rollback release.
 # Only release directories are touched; Docker owns and preserves data volumes.
 python3 - "$releases" "$sha" <<'PY' >/dev/null 2>&1 || { health_status; fail 'Release is running but old release cleanup failed'; }
-import os, pathlib, re, shutil, sys
+import pathlib, re, shutil, sys
 root = pathlib.Path(sys.argv[1])
 current = root / sys.argv[2]
-os.utime(current, None)
-previous = sorted((p for p in root.iterdir() if p.name != current.name and re.fullmatch('[0-9a-f]{40}', p.name) and not p.is_symlink() and p.is_dir()), key=lambda p: p.stat().st_mtime_ns, reverse=True)
-for directory in previous[3:]:
-    shutil.rmtree(directory)
+successes = root / '.successful-releases'
+successes.mkdir(exist_ok=True)
+# Record success separately from archive-controlled release directory mtimes.
+(successes / current.name).touch()
+previous = [p for p in root.iterdir() if p.name != current.name and re.fullmatch('[0-9a-f]{40}', p.name) and not p.is_symlink() and p.is_dir()]
+known_good = sorted((p for p in previous if (successes / p.name).is_file()), key=lambda p: (successes / p.name).stat().st_mtime_ns, reverse=True)
+keep = {p.name for p in known_good[:3]}
+for directory in previous:
+    if directory.name not in keep:
+        shutil.rmtree(directory)
+        (successes / directory.name).unlink(missing_ok=True)
 PY
 printf 'Staging release %s is ready\n' "$sha"

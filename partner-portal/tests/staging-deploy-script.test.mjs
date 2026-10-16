@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -86,16 +86,34 @@ test('keeps_data_volumes', (t) => {
 
 test('prunes_old_releases_only_after_success', (t) => {
   const f = fixture(t);
-  for (const digit of ['1', '2', '3', '4', '5']) mkdirSync(join(f.releases, digit.repeat(40)));
+  for (const digit of ['1', '2', '3', '4', '5']) assert.equal(f.run(digit.repeat(40)).status, 0);
   mkdirSync(join(f.releases, 'operator-notes'));
   assert.notEqual(f.run(sha, { FAIL_UP: '1' }).status, 0);
-  assert.equal(readdirSync(f.releases).filter((name) => /^[a-f0-9]{40}$/.test(name)).length, 6);
+  assert.equal(readdirSync(f.releases).filter((name) => /^[a-f0-9]{40}$/.test(name)).length, 5);
   assert.notEqual(f.run(sha, { FAIL_SMOKE: '1' }).status, 0);
-  assert.equal(readdirSync(f.releases).filter((name) => /^[a-f0-9]{40}$/.test(name)).length, 6);
+  assert.equal(readdirSync(f.releases).filter((name) => /^[a-f0-9]{40}$/.test(name)).length, 5);
   assert.equal(f.run().status, 0);
   assert.equal(readdirSync(f.releases).filter((name) => /^[a-f0-9]{40}$/.test(name)).length, 4);
-  assert(existsSync(join(f.releases, sha)));
+  assert.deepEqual(readdirSync(f.releases).filter((name) => /^[a-f0-9]{40}$/.test(name)).sort(), [
+    '3'.repeat(40), '4'.repeat(40), '5'.repeat(40), sha,
+  ]);
   assert(existsSync(join(f.releases, 'operator-notes')));
+});
+
+test('failed_releases_cannot_displace_successful_rollback', (t) => {
+  const f = fixture(t);
+  assert.equal(f.run('a'.repeat(40)).status, 0);
+  for (const digit of ['b', 'c', 'd', 'e']) {
+    const failure = digit === 'd' ? { FAIL_SMOKE: '1' } : { FAIL_UP: '1' };
+    assert.notEqual(f.run(digit.repeat(40), failure).status, 0);
+    // Later failed archives can have directory mtimes newer than the last success.
+    utimesSync(join(f.releases, digit.repeat(40)), 2000000000, 2000000000);
+    assert(existsSync(join(f.releases, 'a'.repeat(40))));
+  }
+  assert.equal(f.run('f'.repeat(40)).status, 0);
+  assert.deepEqual(readdirSync(f.releases).filter((name) => /^[a-f0-9]{40}$/.test(name)).sort(), [
+    'a'.repeat(40), 'f'.repeat(40),
+  ]);
 });
 
 test('rejects_missing_archive_and_incomplete_configuration_before_up', (t) => {
