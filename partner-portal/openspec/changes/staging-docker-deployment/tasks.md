@@ -14,4 +14,4 @@
 ## 3. Проверка
 
 - [x] 3.1 Проверить OpenSpec, конфигурацию Compose и shell/workflow статические проверки.
-- [ ] 3.2 Выполнить ручной staging-деплой и зафиксировать healthcheck и smoke-test evidence после настройки доступа к VM.
+- [x] 3.2 Выполнить ручной staging-деплой и зафиксировать healthcheck и smoke-test evidence после настройки доступа к VM.
