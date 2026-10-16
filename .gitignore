@@ -31,3 +31,4 @@ output/
 
 partner-portal/playwright-report/
 partner-portal/test-results/
+.worktrees/
