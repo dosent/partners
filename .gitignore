@@ -8,6 +8,7 @@
 .env
 .env.*
 !.env.example
+!/partner-portal/.env.staging.example
 
 # Локальные артефакты разработки
 .DS_Store

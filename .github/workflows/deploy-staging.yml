@@ -1,0 +1,151 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full 40-character commit SHA reachable from main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: partner-portal-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: [self-hosted, linux, staging]
+    environment: staging
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release SHA against main
+        id: select
+        env:
+          REQUESTED_SHA: ${{ github.event.inputs.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          [[ $REQUESTED_SHA =~ ^[0-9a-f]{40}$ ]] || { echo 'Expected a full lowercase commit SHA' >&2; exit 1; }
+          git cat-file -e "$REQUESTED_SHA^{commit}" 2>/dev/null &&
+            git merge-base --is-ancestor "$REQUESTED_SHA" origin/main || {
+              echo 'Release SHA must be reachable from origin/main' >&2
+              exit 1
+            }
+          printf 'sha=%s\n' "$REQUESTED_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Package tracked portal source
+        id: package
+        env:
+          RELEASE_SHA: ${{ steps.select.outputs.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          package="$RUNNER_TEMP/staging-package"
+          mkdir -p "$package"
+          git archive --format=tar "${RELEASE_SHA}:partner-portal" > "$package/source.tar"
+          python3 - "$package" <<'PY'
+          import pathlib, sys, tarfile
+          root = pathlib.Path(sys.argv[1])
+          excluded = {'.git', 'node_modules', 'dist', 'test-results', 'playwright-report',
+                      'coverage', '.gradle', 'build', '__pycache__', '.pytest_cache'}
+          with tarfile.open(root / 'source.tar') as source, tarfile.open(root / 'release.tar.gz', 'w:gz') as output:
+              for member in source:
+                  parts = pathlib.PurePosixPath(member.name).parts
+                  if any(part in excluded or (part.startswith('.env') and
+                         not (part == '.env.example' or (part.startswith('.env.') and part.endswith('.example'))))
+                         for part in parts):
+                      continue
+                  if not (member.isfile() or member.isdir()):
+                      raise ValueError('Release source contains unsupported links or special files')
+                  output.addfile(member, source.extractfile(member) if member.isfile() else None)
+          PY
+          git show "${RELEASE_SHA}:partner-portal/deploy/staging/deploy.sh" > "$package/deploy.sh"
+          rm -f "$package/source.tar"
+
+      - name: Transfer and deploy with readiness and frontend smoke checks
+        id: deliver
+        env:
+          RELEASE_SHA: ${{ steps.select.outputs.sha }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_USER: ${{ vars.STAGING_USER }}
+          STAGING_SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          [[ $STAGING_HOST =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ && $STAGING_USER =~ ^[a-z_][a-z0-9_-]*$ ]] || {
+            echo 'Configure staging host and deployment user' >&2; exit 1;
+          }
+          [[ -n $STAGING_SSH_PRIVATE_KEY && -n $STAGING_KNOWN_HOSTS ]] || {
+            echo 'Configure staging SSH Environment secrets' >&2; exit 1;
+          }
+          # Escape workflow-command characters before explicitly masking each key line.
+          while IFS= read -r line; do
+            line=${line//'%'/'%25'}
+            line=${line//$'\r'/'%0D'}
+            [[ -z $line ]] || printf '::add-mask::%s\n' "$line"
+          done <<< "$STAGING_SSH_PRIVATE_KEY"
+          ssh_dir=$(mktemp -d "$RUNNER_TEMP/staging-ssh.XXXXXXXX")
+          remote_dir=''
+          cleanup() {
+            result=$?
+            trap - EXIT
+            if [[ -n $remote_dir ]]; then
+              if ! ssh "${ssh_options[@]}" "$target" "rm -rf -- '$remote_dir'" >/dev/null 2>&1; then
+                echo 'Temporary VM transfer cleanup failed; operator cleanup may be required' >&2
+                [[ $result != 0 ]] || result=1
+              fi
+            fi
+            rm -rf -- "$ssh_dir"
+            exit "$result"
+          }
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          printf '%s\n' "$STAGING_SSH_PRIVATE_KEY" > "$ssh_dir/private_key"
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          unset STAGING_SSH_PRIVATE_KEY STAGING_KNOWN_HOSTS
+          chmod 0600 "$ssh_dir/private_key" "$ssh_dir/known_hosts"
+          ssh_options=(-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o GlobalKnownHostsFile=/dev/null
+            -o ConnectTimeout=15 -o LogLevel=ERROR -i "$ssh_dir/private_key")
+          target="$STAGING_USER@$STAGING_HOST"
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mktemp -d /tmp/partner-portal-deploy.XXXXXXXX')
+          [[ $remote_dir =~ ^/tmp/partner-portal-deploy\.[a-zA-Z0-9]{8}$ ]] || {
+            remote_dir=''; echo 'Invalid VM transfer directory' >&2; exit 1;
+          }
+          scp -q "${ssh_options[@]}" "$RUNNER_TEMP/staging-package/release.tar.gz" "$RUNNER_TEMP/staging-package/deploy.sh" "$target:$remote_dir/"
+          ssh "${ssh_options[@]}" "$target" bash -s -- "$RELEASE_SHA" "$remote_dir" <<'REMOTE'
+          set -euo pipefail
+          set +x
+          sha=$1
+          transfer=$2
+          trap 'rm -rf -- "$transfer"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          # deploy.sh waits for Compose health and curls the published frontend port.
+          # Its failure output contains only service/state/health and fixed messages.
+          bash "$transfer/deploy.sh" "$sha" "$transfer/release.tar.gz"
+          REMOTE
+
+      - name: Remove local release package
+        if: always()
+        id: cleanup
+        run: |
+          set -euo pipefail
+          rm -rf -- "$RUNNER_TEMP/staging-package"
