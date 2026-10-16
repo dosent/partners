@@ -4,7 +4,7 @@ RUN mkdir -p /workspace && chown gradle:gradle /workspace
 WORKDIR /workspace
 COPY --chown=gradle:gradle . .
 USER gradle
-RUN ./gradlew --no-daemon bootJar
+RUN gradle --no-daemon bootJar
 
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S app && adduser -S -G app app
