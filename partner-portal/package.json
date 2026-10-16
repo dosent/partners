@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:sites": "node --test tests/sites-worker.test.mjs",
     "test:e2e": "playwright test",
-    "verify:e2e-ci": "node scripts/verify-e2e-ci.mjs"
+    "verify:e2e-ci": "node scripts/verify-e2e-ci.mjs",
+    "test:staging-deploy": "node --test tests/staging-deploy-config.test.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
