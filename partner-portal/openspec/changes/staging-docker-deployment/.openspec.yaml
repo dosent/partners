@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-10-16
+goal: Настроить безопасный Docker Compose-деплой тестового стенда partner-portal на vm-neshin-test.simbirsoft из GitHub Actions.
