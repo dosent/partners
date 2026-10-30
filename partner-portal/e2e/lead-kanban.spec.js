@@ -322,6 +322,11 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await createDialog.locator('[name="decisionMakerName"]').fill(primaryLead.decisionMakerName);
     await createDialog.locator('[name="decisionMakerEmail"]').fill(primaryLead.decisionMakerEmail);
     await createDialog.locator('[name="description"]').fill(primaryLead.description);
+    const fieldGeometry = await createDialog.locator('input:not([type=file]),select').evaluateAll(elements =>
+      elements.map(element => ({ name: element.name, height: element.getBoundingClientRect().height })));
+    for (const field of fieldGeometry) {
+      expect(field.height, JSON.stringify(fieldGeometry)).toBeCloseTo(fieldGeometry[0].height, 0);
+    }
     await createDialog.getByRole('button', { name: 'Отправить лид' }).click();
     await expect(partnerPage.getByRole('heading', { name: 'Новый' })).toBeVisible();
     await expect(partnerPage.getByText(primaryLead.companyName)).toBeVisible();

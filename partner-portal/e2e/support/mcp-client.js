@@ -1,4 +1,4 @@
-const MCP_URL = process.env.E2E_MCP_URL ?? 'http://localhost:18089/mcp';
+export const MCP_URL = process.env.E2E_MCP_URL ?? 'http://localhost:18089/mcp';
 
 function decodeResponse(response, body) {
   const contentType = response.headers()['content-type'] ?? '';

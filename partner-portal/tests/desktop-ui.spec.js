@@ -2,8 +2,13 @@ import { test, expect } from '@playwright/test';
 import { registrationContentFixture } from '../e2e/support/test-data.js';
 import { expectDesktopLayout } from '../e2e/support/desktop-layout.js';
 
-async function openPartner(page, { longText = false, outage = false, missingStaffing = false } = {}) {
+async function openPartner(page, { longText = false, outage = false, missingStaffing = false, registration = false } = {}) {
   const content = { locale: 'RU', ...registrationContentFixture('RU') };
+  if (registration) {
+    // The draft fixture needs the metadata supplied by the publication API.
+    content.offers = Object.fromEntries(Object.entries(content.offers).map(([type, offer]) => [type, { ...offer, sha256: 'a'.repeat(64) }]));
+    content.privacyNotice = { version: content.privacyNoticeVersion, title: content.privacyNoticeTitle, body: content.privacyNoticeBody, sha256: 'b'.repeat(64) };
+  }
   if (missingStaffing) delete content.strings['staffing.list.create'];
   const lead = { id: '11111111-1111-4111-8111-111111111111', companyName: 'СинтетическаяКомпания'.repeat(9),
     requestSummary: 'Разработка корпоративной платформы с длинным описанием запроса',
@@ -16,7 +21,7 @@ async function openPartner(page, { longText = false, outage = false, missingStaf
     const path = new URL(route.request().url()).pathname;
     const json = (body, status = 200) => route.fulfill({ status, json: body });
     if (path.endsWith('/auth/yandex/session')) return json({ provider: 'YANDEX', subject: 'synthetic-partner' });
-    if (path.endsWith('/partner-applications/me')) return json({ status: 'APPROVED' });
+    if (path.endsWith('/partner-applications/me')) return registration ? json({}, 404) : json({ status: 'APPROVED' });
     if (path.endsWith('/partners/me')) return json({ locale: 'RU', fullName: 'Синтетический партнёр', email: 'ui@example.test', phone: '+79000000000', countryCode: 'RU' });
     if (path.includes('/public/registration-content/')) return json(content);
     if (path.endsWith('/partner/leads/board')) return outage
@@ -26,7 +31,8 @@ async function openPartner(page, { longText = false, outage = false, missingStaf
     return json({ code: 'UNEXPECTED_TEST_REQUEST' }, 404);
   });
   await page.goto('/');
-  await expect(page.getByRole('navigation')).toBeVisible();
+  if (registration) await expect(page.locator('.registration-card')).toBeVisible();
+  else await expect(page.getByRole('navigation')).toBeVisible();
   return content;
 }
 
@@ -98,4 +104,56 @@ test('unavailable staffing localization retains the section heading and retry', 
   await expect(page.getByRole('heading', { name: 'Заявки на специалистов', exact: true })).toBeVisible({ timeout: 1500 });
   await expectDesktopLayout(page, 'Повторить');
   await expect(page.getByRole('button', { name: 'Создать заявку', exact: true })).toHaveCount(0);
+});
+
+test('lead form keeps text, number, currency and date controls aligned', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await openPartner(page);
+  await page.getByRole('navigation').getByRole('button', { name: 'Мои лиды', exact: true }).click();
+  await page.getByRole('button', { name: 'Добавить лид', exact: true }).first().click();
+  const form = page.getByRole('dialog', { name: 'Добавить лид', exact: true });
+  await form.locator('[name=companyName]').fill('Синтетическая компания для проверки формы');
+  await form.locator('[name=budgetAmount]').fill('300000');
+  await form.locator('[name=plannedStartAt]').fill('2026-12-01');
+  const dimensions = await form.locator('input:not([type=file]),select').evaluateAll(elements => elements.map(el => {
+    const r = el.getBoundingClientRect();
+    return { name: el.name, height: r.height, top: r.top, bottom: r.bottom };
+  }));
+  for (const item of dimensions) {
+    expect(item.height, `${testInfo.project.name}: ${item.name} ${JSON.stringify(dimensions)}`).toBeCloseTo(dimensions[0].height, 0);
+  }
+  for (const [left, right] of [['companyName','domainOrTaxId'], ['budgetAmount','budgetCurrency'], ['plannedStartAt','decisionMakerName']]) {
+    const a = dimensions.find(item => item.name === left), b = dimensions.find(item => item.name === right);
+    expect(a.top, `${left}/${right}: top`).toBeCloseTo(b.top, 0);
+    expect(a.bottom, `${left}/${right}: bottom`).toBeCloseTo(b.bottom, 0);
+  }
+  await page.screenshot({ path: testInfo.outputPath('aligned-lead-form.png'), animations: 'disabled' });
+});
+
+test('staffing form keeps text, number, select and date fields at equal height', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await openPartner(page);
+  await page.getByRole('navigation').getByRole('button', { name: 'Заявки на специалистов' }).click();
+  await page.getByRole('button', { name: 'Создать заявку', exact: true }).click();
+  await page.getByLabel(/Должность \/ роль/).fill('Синтетическая роль');
+  await page.getByLabel('Ожидаемая дата подключения').fill('2026-12-01');
+  const heights = await page.locator('.staffing-form input:not([type=checkbox],[type=file]),.staffing-form select').evaluateAll(elements => elements.map(el => ({type:el.type,height:el.getBoundingClientRect().height})));
+  for (const item of heights) expect(item.height, JSON.stringify(heights)).toBeCloseTo(heights[0].height, 0);
+});
+
+test('profile form keeps locale selection aligned with contact fields', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  const content = await openPartner(page);
+  await page.getByRole('navigation').getByRole('button', { name: content.strings['portal.profile.navigation'], exact: true }).click();
+  await expect(page.locator('.approved-profile-edit-grid input')).toHaveCount(3);
+  const heights = await page.locator('.approved-profile-edit-grid input,.approved-profile-edit-grid select').evaluateAll(elements => elements.map(el => el.getBoundingClientRect().height));
+  for (const height of heights) expect(height, JSON.stringify(heights)).toBeCloseTo(heights[0], 0);
+});
+
+test('registration form keeps country selection aligned with text fields', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await openPartner(page, { registration: true });
+  const heights = await page.locator('.registration-card input:not([type=checkbox],[type=file]),.registration-card select').evaluateAll(elements => elements.map(el => el.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThan(3);
+  for (const height of heights) expect(height, JSON.stringify(heights)).toBeCloseTo(heights[0], 0);
 });
