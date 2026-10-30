@@ -1,7 +1,7 @@
 import { expect, test, completePartnerOAuth, ensurePublishedTestContent, loginAsPartner, loginAsStaff } from './support/fixtures.js';
 import { isValidRussianInn, registrationContentFixture, syntheticPartnerData } from './support/test-data.js';
 import { E2E_BASE_URL } from './support/base-url.js';
-import { createPartnerMcpKey, openMcpSession, revokePartnerMcpKey } from './support/mcp-client.js';
+import { createPartnerMcpKey, openMcpSession, revokePartnerMcpKey, MCP_URL } from './support/mcp-client.js';
 
 async function requestJson(request, path) {
   const response = await request.get(path);
@@ -288,7 +288,7 @@ test('staff approval makes the partner portal available without demo data', asyn
     await revokePartnerMcpKey(secondPartnerContext.request, secondKey.id);
 
     await revokePartnerMcpKey(partnerContext.request, mcpKey.id);
-    const revokedResponse = await partnerContext.request.post('http://localhost:18089/mcp', {
+    const revokedResponse = await partnerContext.request.post(MCP_URL, {
       headers: { 'X-Partner-API-Key': mcpKey.secret, Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json' },
       data: { jsonrpc: '2.0', id: 9, method: 'tools/list', params: {} },
     });

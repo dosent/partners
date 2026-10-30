@@ -10,6 +10,7 @@
   --ui-control-height: 40px;
   --ui-control-compact: 32px;
   --ui-control-radius: 8px;
+  --ui-field-height: 44px;
   --blue: var(--ui-primary);
 }
 :is(.primary, .secondary, .danger, .plb-primary, .plb-secondary, .staffing-primary, .staffing-secondary, .approved-portal-logout, .staff-home-secondary, .staff-danger-button) {
@@ -35,3 +36,31 @@
 :is(.secondary, .plb-secondary, .staffing-secondary, .approved-portal-logout):hover:not(:disabled) { background: #eef4ff; border-color: #9bbbf0; color: #004dcc; }
 .danger { background: #fff; border-color: #e8b6b6; color: #a32929; }
 :is(.primary, .secondary, .danger, .plb-primary, .plb-secondary, .staffing-primary, .staffing-secondary, .approved-portal-logout) > svg { flex-shrink: 0; }
+
+/* Normalize single-line fields across Chromium and native WebKit controls.
+   Checkboxes, uploads, multiline/list controls keep their own geometry. */
+form :is(input:not([type=checkbox], [type=radio], [type=file], [type=hidden], [type=range], [type=color], [type=submit], [type=button]), select:not([multiple], [size])) {
+  box-sizing: border-box;
+  min-width: 0;
+  height: var(--ui-field-height);
+  min-height: var(--ui-field-height);
+  padding: 11px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  vertical-align: middle;
+}
+form select:not([multiple], [size]) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 40px;
+  background-image: url('/assets/form-caret-down.svg');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+form input[type=date] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+form input[type=date]::-webkit-datetime-edit { padding: 0; }
+form input[type=date]::-webkit-date-and-time-value { min-height: 20px; text-align: left; }
