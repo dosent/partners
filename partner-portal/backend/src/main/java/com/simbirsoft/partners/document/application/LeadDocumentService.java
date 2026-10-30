@@ -2,12 +2,7 @@ package com.simbirsoft.partners.document.application;
 
 import com.simbirsoft.partners.document.domain.LeadAttachment;
 import com.simbirsoft.partners.document.domain.LeadAttachmentStatus;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,40 +13,30 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Profile("!auth-test")
 public class LeadDocumentService {
-    public static final int MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-    private static final String PDF = "application/pdf";
-    private static final String DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    public static final int MAX_FILE_SIZE_BYTES = DocumentValidationService.MAX_FILE_SIZE_BYTES;
     private final LeadAttachmentStore attachments;
     private final ObjectStorage storage;
-    private final MalwareScanner scanner;
+    private final DocumentValidationService validation;
 
     public LeadDocumentService(LeadAttachmentStore attachments, ObjectStorage storage, MalwareScanner scanner) {
         this.attachments = attachments;
         this.storage = storage;
-        this.scanner = scanner;
+        this.validation = new DocumentValidationService(scanner);
     }
 
     /** Validate and scan before any lead, metadata or object storage write is performed. */
     public PreparedAttachment prepare(String originalFileName, String suppliedContentType, byte[] bytes) {
-        if (bytes == null || bytes.length == 0 || bytes.length > MAX_FILE_SIZE_BYTES)
-            throw badRequest();
-        String fileName = safeFileName(originalFileName);
-        String contentType = normalizeContentType(suppliedContentType);
-        String extension = extension(fileName);
-        if (!((extension.equals("pdf") && PDF.equals(contentType))
-                || (extension.equals("docx") && DOCX.equals(contentType)))) throw badRequest();
-        if (extension.equals("pdf") && !startsWith(bytes, "%PDF-".getBytes(StandardCharsets.US_ASCII))) throw badRequest();
-        if (extension.equals("docx") && !startsWith(bytes, new byte[] {'P', 'K', 3, 4})) throw badRequest();
         try {
-            if (scanner.scan(bytes) != MalwareScanner.Result.CLEAN)
-                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Attachment did not pass security check");
+            var prepared = validation.prepare(originalFileName, suppliedContentType, bytes);
+            return new PreparedAttachment(prepared.fileName(), prepared.contentType(), prepared.bytes(), prepared.sha256());
         } catch (ResponseStatusException expected) {
+            // Preserve the existing lead API while the generic CV validator uses HTTP 413.
+            if (expected.getStatusCode().value() == 413) throw badRequest();
+            if (expected.getStatusCode().is5xxServerError())
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Attachment could not be checked; no lead was created");
             throw expected;
-        } catch (RuntimeException unavailable) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Attachment could not be checked; no lead was created");
         }
-        return new PreparedAttachment(fileName, contentType, bytes.clone(), sha256(bytes));
     }
 
     @Transactional
@@ -91,35 +76,6 @@ public class LeadDocumentService {
         } catch (RuntimeException failure) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Attachment is temporarily unavailable");
         }
-    }
-
-    private static String safeFileName(String value) {
-        if (value == null || value.isBlank() || value.length() > 512) throw badRequest();
-        String fileName = value.replace('\\', '/');
-        fileName = fileName.substring(fileName.lastIndexOf('/') + 1).trim();
-        if (fileName.isBlank() || fileName.length() > 255 || fileName.chars().anyMatch(c -> c < 32 || c == 127))
-            throw badRequest();
-        return fileName;
-    }
-
-    private static String normalizeContentType(String value) {
-        return value == null ? "" : value.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
-    }
-
-    private static String extension(String fileName) {
-        int dot = fileName.lastIndexOf('.');
-        return dot < 0 ? "" : fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
-    }
-
-    private static boolean startsWith(byte[] value, byte[] prefix) {
-        if (value.length < prefix.length) return false;
-        for (int index = 0; index < prefix.length; index++) if (value[index] != prefix[index]) return false;
-        return true;
-    }
-
-    private static String sha256(byte[] content) {
-        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content)); }
-        catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
 
     private static ResponseStatusException badRequest() {

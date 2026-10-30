@@ -1,4 +1,5 @@
 import { randomInt, randomUUID } from 'node:crypto';
+import { candidateTestCopy } from '../../tests/staff-candidates-fixture.js';
 
 export function uniqueFixtureId() {
   return `e2e-${randomUUID().replaceAll('-', '')}`;
@@ -48,6 +49,30 @@ export function syntheticPartnerData() {
     companyName: `Тестовая организация ${id.slice(-8)}`,
     individualProprietorInn: syntheticRussianInn('SOLE_PROPRIETOR'),
     legalEntityInn: syntheticRussianInn('LEGAL_ENTITY'),
+  };
+}
+
+// Искусственные профили и PDF используются только в изолированной e2e-среде.
+export function syntheticCandidateData(overrides = {}) {
+  const fixtureId = uniqueFixtureId();
+  return {
+    role: `Java E2E ${fixtureId}`,
+    grade: 'Middle E2E',
+    skills: ['Java', 'Spring Boot', fixtureId],
+    experienceMonths: 41,
+    description: `Искусственный профиль кандидата ${fixtureId}. Не содержит персональных данных.`,
+    availability: 'AVAILABLE',
+    externalKey: `JIRA-${fixtureId}`,
+    hourlyRate: { amount: '2500.50', currency: 'RUB' },
+    ...overrides,
+  };
+}
+
+export function syntheticCandidateCv(name = 'synthetic-candidate.pdf', marker = uniqueFixtureId()) {
+  return {
+    name,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(`%PDF-1.7\nSynthetic E2E CV ${marker}\n%%EOF\n`),
   };
 }
 
@@ -135,6 +160,10 @@ export function registrationContentFixture(locale = 'RU') {
     'status.saved', 'errors.save', 'loading', 'errors.load', 'errors.localeUnavailable',
   ].map(key => [`portal.profile.${key}`, `E2E ${locale} ${key}`]));
   Object.assign(strings, profileValues);
+  // Только тестовые подписи: KZ/EN явно маркируются, переводы продукта не создаются.
+  Object.assign(strings, Object.fromEntries(Object.entries(candidateTestCopy).map(([key, value]) => [
+    `candidates.${key}`, locale === 'RU' ? value : `E2E ${locale} candidates.${key}`,
+  ])));
   Object.assign(strings, Object.fromEntries([
     'navigation', 'title', 'description', 'empty', 'name.label', 'actions.create', 'actions.creating',
     'actions.revoke', 'actions.cancel', 'status.created', 'status.revoked', 'loading', 'errors.load',

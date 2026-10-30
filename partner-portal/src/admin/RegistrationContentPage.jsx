@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowClockwise, ArrowDown, ArrowUp, FloppyDisk, Globe, UploadSimple } from '@phosphor-icons/react';
 import { getRegistrationContentAdmin, publishRegistrationContent, saveRegistrationContentDraft } from '../api/registrationContentAdminApi';
+import { CANDIDATE_TEXT_KEYS } from './candidateContent.js';
 import { partnerProfileContentDefaults } from '../registration/partnerProfileContentDefaults.js';
 import { STAFFING_TEXT_KEYS, STAFFING_FALLBACK_COPY } from '../partner/staffingRequestContent.js';
 import './RegistrationContentPage.css';
@@ -158,7 +159,7 @@ const defaultOffers = {
 };
 const defaultMetadata = { privacyNoticeVersion: '1.0', privacyNoticeTitle: 'Согласие на обработку персональных данных', logoAssetKey: 'simbirsoft' };
 const optionalPortalKeys = ['portal.actions.logout', 'portal.actions.loggingOut', 'portal.errors.logout'];
-const emptyValue = () => ({ strings: Object.fromEntries([...requiredKeys, ...optionalPortalKeys].map(key => [key, ''])), offers: Object.fromEntries(offerTypes.map(type => [type.id, emptyOffer()])), privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
+const emptyValue = () => ({ strings: Object.fromEntries([...requiredKeys, ...optionalPortalKeys, ...CANDIDATE_TEXT_KEYS.map(key => `candidates.${key}`)].map(key => [key, ''])), offers: Object.fromEntries(offerTypes.map(type => [type.id, emptyOffer()])), privacyNoticeVersion: '', privacyNoticeTitle: '', privacyNoticeBody: '', logoAssetKey: '' });
 const useDefaultWhenEmpty = (value, fallback) => value == null || (typeof value === 'string' && !value.trim()) ? fallback : value;
 function normalizeDraft(value = {}, locale = 'ru') {
   value ??= {};
@@ -301,7 +302,7 @@ export function RegistrationContentPage({ session, onBack, onLogout }) {
         <section className="rc-panel"><div className="rc-panel-heading"><div><span className="rc-step">01</span><h2>Интерфейс и бренд</h2></div><small>Локаль {locale.toUpperCase()} · бренд {localeInfo.brand}</small></div>
           <label className="rc-field">Ключ логотипа<select value={draft.logoAssetKey} onChange={event => updateField('logoAssetKey', event.target.value)}><option value="">Не выбран — публикация недоступна</option><option value="simbirsoft">simbirsoft</option><option value="17soft">17soft</option></select><small>Здесь задаётся только ключ уже настроенного сервером ассета. Картинки загружать нельзя.</small></label>
           <div className="rc-fields-grid">{requiredKeys.map(key => <label className="rc-field" key={key}><span>{labels[key]} <code>{key}</code></span><input value={draft.strings?.[key] ?? ''} onChange={event => updateString(key, event.target.value)} maxLength={12000} /></label>)}</div>
-          {extraKeys.length > 0 && <details className="rc-extra-keys"><summary>Дополнительные ключи ({extraKeys.length})</summary><div className="rc-fields-grid">{extraKeys.map(key => <label className="rc-field" key={key}><span><code>{key}</code></span><textarea value={draft.strings[key] ?? ''} onChange={event => updateString(key, event.target.value)} maxLength={12000} rows={2}/></label>)}</div></details>}
+          {extraKeys.length > 0 && <details className="rc-extra-keys"><summary>Дополнительные ключи ({extraKeys.length})</summary><div className="rc-fields-grid">{extraKeys.map(key => <label className="rc-field" key={key}><span>{key.startsWith('candidates.') && 'Каталог кандидатов: '}<code>{key}</code></span><textarea value={draft.strings[key] ?? ''} onChange={event => updateString(key, event.target.value)} maxLength={12000} rows={2}/></label>)}</div></details>}
           <AddStringField onAdd={(key) => updateString(key, '')} existingKeys={Object.keys(draft.strings ?? {})}/>
         </section>
         <section className="rc-panel"><div className="rc-panel-heading"><div><span className="rc-step">02</span><h2>Оферты по типу заявителя</h2></div><small>Все три текста обязательны для публикации</small></div>{offerTypes.map(type => <div key={type.id}><h3>{type.label}</h3><div className="rc-fields-grid rc-document-meta"><label className="rc-field">Версия<input value={draft.offers?.[type.id]?.version ?? ''} onChange={event => updateOffer(type.id, 'version', event.target.value)} maxLength={100}/></label><label className="rc-field">Заголовок<input value={draft.offers?.[type.id]?.title ?? ''} onChange={event => updateOffer(type.id, 'title', event.target.value)} maxLength={1000}/></label></div><label className="rc-field">Текст утверждённой оферты<textarea value={draft.offers?.[type.id]?.body ?? ''} onChange={event => updateOffer(type.id, 'body', event.target.value)} rows={12} maxLength={500000} placeholder="Вставьте предоставленный и утверждённый юридический текст"/></label></div>)}</section>

@@ -85,8 +85,13 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(FieldValidationException.class)
     ResponseEntity<ApiError> fieldValidation(FieldValidationException exception, HttpServletRequest request) {
-        return error(HttpStatus.BAD_REQUEST, exception.getCode(), "Request validation failed",
+        return error(HttpStatus.valueOf(exception.getStatusCode().value()), exception.getCode(), "Request validation failed",
                 List.of(new ApiError.FieldError(exception.getField(), exception.getReason())), request);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> tooLarge(HttpServletRequest request) {
+        return error(HttpStatus.PAYLOAD_TOO_LARGE, "FILE_TOO_LARGE", "File is too large", List.of(), request);
     }
 
     @ExceptionHandler(Exception.class)

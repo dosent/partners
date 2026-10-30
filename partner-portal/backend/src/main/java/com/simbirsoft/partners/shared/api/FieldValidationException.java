@@ -9,7 +9,11 @@ public class FieldValidationException extends ResponseStatusException {
     private final String field;
 
     public FieldValidationException(String code, String field, String message) {
-        super(HttpStatus.BAD_REQUEST, message);
+        this(HttpStatus.BAD_REQUEST, code, field, message);
+    }
+
+    public FieldValidationException(HttpStatus status, String code, String field, String message) {
+        super(status, message);
         this.code = code;
         this.field = field;
     }

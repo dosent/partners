@@ -13,7 +13,7 @@ import java.util.Map;
 @Schema(description = "Редактируемый набор текстов регистрации")
 public record RegistrationContentDraftRequest(
         @NotNull @jakarta.validation.constraints.PositiveOrZero Long expectedDraftVersion,
-        @Size(max = 200) Map<@NotNull String, @NotNull @Size(max = 12000) String> strings,
+        @Size(max = 500) Map<@NotNull String, @NotNull @Size(max = 12000) String> strings,
         Map<@NotNull OfferType, @Valid OfferDocument> offers,
         @Size(max = 100) String privacyNoticeVersion,
         @Size(max = 1000) String privacyNoticeTitle,

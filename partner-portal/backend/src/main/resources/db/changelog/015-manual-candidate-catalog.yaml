@@ -1,0 +1,222 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-manual-candidate-catalog
+      author: partner-portal
+      changes:
+        - createTable:
+            tableName: candidate_profile
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: code
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_candidate_profile_code
+              - column:
+                  name: role
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grade
+                  type: varchar(80)
+              - column:
+                  name: skills
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: experience_months
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(10000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: availability
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: external_key
+                  type: varchar(200)
+                  constraints:
+                    unique: true
+                    uniqueConstraintName: uq_candidate_profile_external_key
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: candidate_creation
+            columns:
+              - column:
+                  name: actor
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: idempotency_key
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: candidate_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: candidate_hourly_rate
+            columns:
+              - column:
+                  name: candidate_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: amount
+                  type: numeric(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: changed_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: changed_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: candidate_cv
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: candidate_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: size
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sha256
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: object_key
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: checked_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: candidate_creation
+            columnNames: actor, idempotency_key
+            constraintName: uq_candidate_creation_key
+        - addUniqueConstraint:
+            tableName: candidate_cv
+            columnNames: candidate_id, version
+            constraintName: uq_candidate_cv_version
+        - createIndex:
+            tableName: candidate_profile
+            indexName: idx_candidate_available
+            columns:
+              - column:
+                  name: availability
+              - column:
+                  name: updated_at
+              - column:
+                  name: id
+        - createIndex:
+            tableName: candidate_profile
+            indexName: idx_candidate_updated
+            columns:
+              - column:
+                  name: updated_at
+              - column:
+                  name: id
