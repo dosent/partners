@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Plus, ArrowsClockwise } from '@phosphor-icons/react';
 import { getAllPartnerLeads } from '../api/partnerLeadsApi';
 import { createPartnerStaffingRequest, getPartnerStaffingRequest, getPartnerStaffingRequests, uploadPartnerStaffingAttachment } from '../api/staffingRequestsApi';
+import { createRequestId } from '../utils/requestId.js';
 import './StaffingRequestsPage.css';
 
 const initial = () => ({ leadId: '', title: '', headcount: '1', grade: '', requiredSkills: '', preferredSkills: '',
@@ -26,7 +27,7 @@ export function StaffingRequestsPage({ text = key => key, locale = 'RU' }) {
   const [files, setFiles] = useState({ sourceBrief: null, cv: null });
   const [rejectedFiles, setRejectedFiles] = useState({ sourceBrief: false, cv: false });
   const [failedFiles, setFailedFiles] = useState([]);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey, setIdempotencyKey] = useState(createRequestId);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
@@ -84,7 +85,7 @@ export function StaffingRequestsPage({ text = key => key, locale = 'RU' }) {
     }
     finally { setSaving(false); }
   };
-  const beginCreate = () => { setError(''); setReceipt(null); setFailedFiles([]); setIdempotencyKey(crypto.randomUUID()); setForm(initial()); setFiles({ sourceBrief: null, cv: null }); setRejectedFiles({ sourceBrief: false, cv: false }); setView('form'); };
+  const beginCreate = () => { setError(''); setReceipt(null); setFailedFiles([]); setIdempotencyKey(createRequestId()); setForm(initial()); setFiles({ sourceBrief: null, cv: null }); setRejectedFiles({ sourceBrief: false, cv: false }); setView('form'); };
   const retryFailedFiles = async () => {
     setSaving(true);
     const stillFailed = [];
