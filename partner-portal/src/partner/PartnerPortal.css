@@ -1,0 +1,66 @@
+.approved-portal { color: var(--ui-text); background: var(--ui-background); }
+.approved-portal .approved-portal-header { display: grid; grid-template-columns: 240px minmax(0, 1fr) auto auto; gap: 24px; min-height: 76px; height: auto; padding: 16px 32px; }
+.approved-portal-header img { width: 160px; max-width: 100%; max-height: 36px; object-fit: contain; object-position: left; }
+.approved-portal-header strong { font-size: 16px; overflow-wrap: anywhere; }
+.approved-portal .approved-portal-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: start; gap: 32px; width: 100%; max-width: none; margin: 0; padding: 32px; }
+.approved-portal .approved-portal-layout > main { width: 100%; max-width: 100%; min-width: 0; margin: 0; padding: 0; }
+.approved-portal-layout > nav { position: sticky; top: 24px; min-width: 0; }
+.approved-portal .approved-portal-layout nav button { display: flex; align-items: center; width: 100%; min-height: 48px; padding: 12px 16px; border-radius: 8px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; white-space: normal; }
+.approved-portal-layout nav button:hover { background: #edf2fa; }
+.approved-portal-layout nav button:nth-child(6) { margin-top: 24px; }
+.approved-portal .approved-portal-layout nav button.selected { color: #004dcc; background: #e8f0ff; }
+.portal-page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin: 0 0 24px; }
+.portal-page-heading-copy { flex: 1; min-width: 0; }
+.approved-portal .portal-page-heading h1 { margin: 0; font-size: 30px; line-height: 1.3; letter-spacing: -.7px; overflow-wrap: anywhere; }
+.portal-page-heading p { margin: 8px 0 0; color: var(--ui-muted); font-size: 14px; line-height: 1.6; }
+.portal-page-actions { display: flex; flex: 0 1 auto; justify-content: flex-end; gap: 12px; max-width: 44%; min-width: 0; }
+.approved-portal .staffing-page { width: 100%; max-width: none; min-width: 0; margin: 0; padding: 0 0 32px; }
+.approved-portal .staffing-form { max-width: 960px; }
+.approved-portal :is(.staffing-form label, .staffing-form fieldset, .staffing-card, .partner-api-keys, .approved-portal-empty) { min-width: 0; }
+.approved-portal :is(.staffing-card h3, .staffing-card p, .staffing-card-bottom, .partner-api-key-list strong, .approved-portal-empty p, .plb-detail-dialog h2) { overflow-wrap: anywhere; }
+.approved-portal .staffing-form :is(input:not([type=checkbox]), select) { min-width: 0; min-height: var(--ui-control-height); font-size: 14px; }
+.approved-portal .staffing-form label { font-size: 14px; }
+.approved-portal .staffing-form :is(legend, small) { overflow-wrap: anywhere; }
+.approved-portal .staffing-form small { font-size: 12px; color: var(--ui-muted); }
+.approved-portal .staffing-check input { min-height: 16px; flex-shrink: 0; }
+.approved-portal .staffing-empty { min-height: 240px; padding: 32px 24px; border: 1px solid var(--ui-border); background: #fff; }
+.approved-portal .staffing-empty p { margin-bottom: 0; color: var(--ui-muted); }
+.approved-portal .staffing-back { margin-bottom: 16px; }
+.approved-portal .plb-toolbar { gap: 12px; align-items: center; margin-bottom: 24px; }
+.approved-portal .plb-search { flex: 1 1 260px; min-width: 200px; max-width: 440px; height: 40px; }
+.approved-portal .plb-search input { min-height: 0; height: auto; padding: 0; font-size: 14px; line-height: 1.5; }
+.approved-portal .plb-filter { flex: 0 1 auto; min-height: 40px; height: auto; padding: 8px 12px; gap: 8px; color: var(--ui-muted); }
+.approved-portal .plb-filter span { white-space: nowrap; }
+.approved-portal .plb-filter input { flex: 0 1 132px; min-width: 0; width: 132px; min-height: 0; height: auto; padding: 0; font-size: 13px; }
+.approved-portal .plb-status-filter { height: 40px; max-width: 100%; min-width: 0; }
+.approved-portal .plb-status-filter select { min-width: 0; min-height: 0; width: 100%; height: auto; padding: 0 22px 0 0; font-size: 14px; }
+.approved-portal .plb-total { flex: 0 0 auto; margin-left: auto; width: auto; font-size: 13px; color: var(--ui-muted); }
+.approved-portal .plb-board { width: 100%; max-width: 100%; min-width: 0; overscroll-behavior-x: contain; }
+.approved-portal .plb-empty { max-width: 600px; margin: 32px auto; padding: 32px; }
+.approved-portal .plb-empty p { margin-bottom: 0; color: var(--ui-muted); }
+.approved-portal .plb-empty .plb-secondary { margin-top: 20px; }
+.approved-portal .plb-board-error { flex-wrap: wrap; overflow-wrap: anywhere; }
+.approved-portal .plb-board-error > span { flex: 1 1 240px; min-width: 0; }
+.approved-portal .plb-form label { display: block; line-height: 1.5; font-size: 14px; }
+.approved-portal .plb-form label > :is(input, select, textarea) { display: block; margin-top: 8px; font-size: 14px; }
+.approved-portal .plb-form label > small { display: block; margin-top: 6px; }
+.approved-portal .plb-dialog-actions { max-width: none; margin: 8px 0 0; }
+@media (max-width: 1100px) and (min-width: 701px) {
+  .approved-portal .approved-portal-layout { grid-template-columns: 216px minmax(0, 1fr); padding: 24px; gap: 24px; }
+  .approved-portal .approved-portal-header { grid-template-columns: 216px minmax(0, 1fr) auto auto; padding: 16px 24px; gap: 24px; }
+  .approved-portal-header span { max-width: 150px; }
+}
+@media (max-width: 700px) {
+  .approved-portal .approved-portal-header { display: flex; flex-wrap: wrap; padding: 12px 16px; gap: 8px; }
+  .approved-portal .approved-portal-header img { width: 28%; }
+  .approved-portal .approved-portal-layout { grid-template-columns: minmax(0, 1fr); padding: 20px; gap: 24px; }
+  .approved-portal-layout > nav { position: static; }
+  .approved-portal .approved-portal-layout nav button { width: auto; flex-shrink: 0; white-space: nowrap; }
+  .approved-portal-layout nav button:nth-child(6) { margin-top: 0; }
+  .portal-page-heading { flex-wrap: wrap; gap: 16px; }
+  .approved-portal .portal-page-heading h1 { font-size: 26px; }
+  .portal-page-actions { max-width: 100%; }
+  .approved-portal .plb-search { min-width: 0; max-width: none; }
+  .approved-portal .plb-filter { min-width: 0; }
+  .approved-portal .plb-filter input { width: 116px; flex-basis: 116px; }
+}

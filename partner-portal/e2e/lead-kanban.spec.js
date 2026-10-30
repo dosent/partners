@@ -1,6 +1,7 @@
 import { expect, test, completePartnerOAuth, ensurePublishedTestContent, loginAsStaff } from './support/fixtures.js';
 import { syntheticPartnerData, uniqueFixtureId } from './support/test-data.js';
 import { E2E_BASE_URL } from './support/base-url.js';
+import { expectDesktopLayout } from './support/desktop-layout.js';
 
 const api = {
   applications: '/api/v1/admin/partner-applications?page=0&size=100',
@@ -303,6 +304,12 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await expect(partnerPage.getByRole('heading', { name: 'Мои лиды' })).toBeVisible();
 
     const primaryLead = newLead(partner, `основной-${partner.id.slice(-8)}`);
+    // Real backend/DB regression: desktop actions must not escape the window.
+    for (const width of [1280, 1440, 1920, 1024]) {
+      await partnerPage.setViewportSize({ width, height: 900 });
+      await expectDesktopLayout(partnerPage, 'Добавить лид');
+    }
+    await partnerPage.setViewportSize({ width: 1280, height: 900 });
     await partnerPage.getByRole('button', { name: 'Добавить лид' }).first().click();
     const createDialog = partnerPage.getByRole('dialog', { name: 'Добавить лид' });
     await expect(createDialog).toBeVisible();
