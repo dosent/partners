@@ -1,5 +1,7 @@
 # Docker Compose staging на VM
 
+Рабочий стенд пользователя — порт **8088**, Compose-проект `par-1-diagnostic`; см. [инструкцию для 8088](../8088/README.md). Описанный ниже отдельный проект `partner-portal-staging` в текущем окружении работает на **18088** и не обновляет экземпляр 8088.
+
 Стенд `vm-neshin-test.simbirsoft` использует отдельный Docker Compose project
 `partner-portal-staging`. Именованные тома
 `partner-portal-staging_postgres-data` и
