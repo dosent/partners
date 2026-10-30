@@ -1,0 +1,37 @@
+/* Shared action tokens; layout and navigation retain their own semantics. */
+:root {
+  --ui-primary: #0061ff;
+  --ui-primary-hover: #004dcc;
+  --ui-text: #182640;
+  --ui-muted: #596980;
+  --ui-border: #dce3ed;
+  --ui-surface: #fff;
+  --ui-background: #f5f7fb;
+  --ui-control-height: 40px;
+  --ui-control-compact: 32px;
+  --ui-control-radius: 8px;
+  --blue: var(--ui-primary);
+}
+:is(.primary, .secondary, .danger, .plb-primary, .plb-secondary, .staffing-primary, .staffing-secondary, .approved-portal-logout, .staff-home-secondary, .staff-danger-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--ui-control-height);
+  min-width: 0;
+  max-width: 100%;
+  padding: 9px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  font: 600 14px/1.4 Mont, Arial, sans-serif;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: none;
+}
+:is(.primary, .plb-primary, .staffing-primary) { background: var(--ui-primary); border-color: var(--ui-primary); color: #fff; }
+:is(.primary, .plb-primary, .staffing-primary):hover:not(:disabled) { background: var(--ui-primary-hover); border-color: var(--ui-primary-hover); }
+:is(.secondary, .plb-secondary, .staffing-secondary, .approved-portal-logout, .staff-home-secondary) { background: var(--ui-surface); color: var(--ui-text); }
+:is(.secondary, .plb-secondary, .staffing-secondary, .approved-portal-logout):hover:not(:disabled) { background: #eef4ff; border-color: #9bbbf0; color: #004dcc; }
+.danger { background: #fff; border-color: #e8b6b6; color: #a32929; }
+:is(.primary, .secondary, .danger, .plb-primary, .plb-secondary, .staffing-primary, .staffing-secondary, .approved-portal-logout) > svg { flex-shrink: 0; }

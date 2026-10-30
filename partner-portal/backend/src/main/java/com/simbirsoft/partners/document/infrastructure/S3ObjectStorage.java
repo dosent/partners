@@ -75,7 +75,8 @@ class S3ObjectStorage implements ObjectStorage {
             String day = DAY.format(Instant.now());
             String payloadHash = sha256(body);
             String host = uri.getHost() + (uri.getPort() < 0 ? "" : ":" + uri.getPort());
-            String canonicalHeaders = "host:" + host + "\n" + (contentType.isEmpty() ? "" : "content-type:" + contentType + "\n")
+            // SigV4 requires canonical headers in the same sorted order as signedHeaders.
+            String canonicalHeaders = (contentType.isEmpty() ? "" : "content-type:" + contentType + "\n") + "host:" + host + "\n"
                     + "x-amz-content-sha256:" + payloadHash + "\n" + "x-amz-date:" + date + "\n";
             String signedHeaders = contentType.isEmpty() ? "host;x-amz-content-sha256;x-amz-date"
                     : "content-type;host;x-amz-content-sha256;x-amz-date";

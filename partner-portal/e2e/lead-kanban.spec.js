@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, completePartnerOAuth, ensurePublishedTestContent, loginAsStaff } from './support/fixtures.js';
 import { syntheticPartnerData, uniqueFixtureId } from './support/test-data.js';
 import { E2E_BASE_URL } from './support/base-url.js';
+import { expectDesktopLayout } from './support/desktop-layout.js';
 
 const api = {
   applications: '/api/v1/admin/partner-applications?page=0&size=100',
@@ -139,6 +141,10 @@ test('staffing request assignment persists and enforces staff roles without part
     approvedPartner = await registerAndApprovePartner(browser, adminPage, partner);
     const lead = await createLeadViaApi(approvedPartner.context.request, partner, `assignment-${partner.id.slice(-8)}`);
     const partnerPage = approvedPartner.page;
+    // HTTP staging does not expose randomUUID; keep the real getRandomValues API.
+    await partnerPage.evaluate(() => {
+      Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+    });
     await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
       .getByRole('button', { name: 'Заявки на специалистов' }).click();
     await partnerPage.getByRole('button', { name: 'Создать заявку' }).click();
@@ -154,7 +160,8 @@ test('staffing request assignment persists and enforces staff roles without part
     await partnerPage.getByLabel('Город \/ страна').fill('Удалённо');
     await partnerPage.getByLabel('Ожидаемая дата подключения').fill('2026-12-15');
     await partnerPage.getByRole('button', { name: 'Отправить заявку' }).click();
-    await expect(partnerPage.getByText('Заявка сохранена')).toBeVisible();
+    await expect(partnerPage.getByText('Заявка сохранена', { exact: true })).toBeVisible();
+    await expect(partnerPage.getByRole('alert')).toHaveCount(0);
     const createdResponse = await approvedPartner.context.request.get('/api/v1/partner/staffing-requests');
     expect(createdResponse.status()).toBe(200);
     const createdItems = (await createdResponse.json()).items;
@@ -299,6 +306,12 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await expect(partnerPage.getByRole('heading', { name: 'Мои лиды' })).toBeVisible();
 
     const primaryLead = newLead(partner, `основной-${partner.id.slice(-8)}`);
+    // Real backend/DB regression: desktop actions must not escape the window.
+    for (const width of [1280, 1440, 1920, 1024]) {
+      await partnerPage.setViewportSize({ width, height: 900 });
+      await expectDesktopLayout(partnerPage, 'Добавить лид');
+    }
+    await partnerPage.setViewportSize({ width: 1280, height: 900 });
     await partnerPage.getByRole('button', { name: 'Добавить лид' }).first().click();
     const createDialog = partnerPage.getByRole('dialog', { name: 'Добавить лид' });
     await expect(createDialog).toBeVisible();
@@ -337,7 +350,10 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await expect(partnerPage.getByRole('alert')).toContainText('PDF или DOCX');
     await expect(partnerPage.getByLabel(/Обязательные навыки и стек/)).toHaveValue('Java, Spring Boot');
     await partnerPage.getByRole('button', { name: 'Продолжить без файла', exact: true }).click();
-    await partnerPage.locator('input[type="file"]').nth(1).setInputFiles({ name: 'cv-example.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\ncv example') });
+    const cvBytes = readFileSync(new URL('./fixtures/synthetic-cv.docx', import.meta.url));
+    const briefBytes = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(1024 * 1024 + 1, 32)]);
+    await partnerPage.locator('input[type="file"]').first().setInputFiles({ name: 'brief-over-1mb.pdf', mimeType: 'application/pdf', buffer: briefBytes });
+    await partnerPage.locator('input[type="file"]').nth(1).setInputFiles({ name: 'cv-res (8).docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: cvBytes });
     await partnerPage.getByLabel(/Задачи и ожидания/).fill('Разработка и развитие сервисов проекта.');
     await partnerPage.getByLabel(/Загрузка, часов в неделю/).fill('40');
     await partnerPage.getByLabel('Формат работы').selectOption('REMOTE');
@@ -349,7 +365,8 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     await partnerPage.getByLabel(/Обязательные навыки и стек/).fill('Java, Spring Boot');
     await partnerPage.getByRole('button', { name: 'Отправить заявку' }).click();
     await expect(partnerPage.getByText(/^SR-[A-F0-9]{8}$/)).toBeVisible();
-    await expect(partnerPage.getByText('Заявка сохранена')).toBeVisible();
+    await expect(partnerPage.getByText('Заявка сохранена', { exact: true })).toBeVisible();
+    await expect(partnerPage.getByRole('alert')).toHaveCount(0);
     await partnerPage.getByRole('button', { name: 'К списку заявок' }).click();
     await expect(partnerPage.getByRole('heading', { name: 'Backend-разработчик' })).toBeVisible();
 
@@ -363,10 +380,14 @@ test('approved partner creates and manages leads on the Kanban board safely', as
     const staffingDetailResponse = await approvedPartner.context.request.get(`/api/v1/partner/staffing-requests/${staffingRequestId}`);
     expect(staffingDetailResponse.ok()).toBeTruthy();
     const staffingDetail = await staffingDetailResponse.json();
-    expect(staffingDetail.attachments.map(file => file.kind)).toEqual(['cv']);
+    expect(staffingDetail.attachments.map(file => file.kind)).toEqual(['cv', 'sourceBrief']);
     const staffingFile = await approvedPartner.context.request.get(`/api/v1/partner/staffing-requests/${staffingRequestId}/attachments/${staffingDetail.attachments[0].id}`);
     expect(staffingFile.ok()).toBeTruthy();
-    expect(await staffingFile.body()).toEqual(Buffer.from('%PDF-1.7\ncv example'));
+    expect(await staffingFile.body()).toEqual(cvBytes);
+    expect(staffingDetail.attachments[0].fileName).toBe('cv-res (8).docx');
+    const briefFile = await approvedPartner.context.request.get(`/api/v1/partner/staffing-requests/${staffingRequestId}/attachments/${staffingDetail.attachments[1].id}`);
+    expect(briefFile.ok()).toBeTruthy();
+    expect(await briefFile.body()).toEqual(briefBytes);
 
     await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
       .getByRole('button', { name: 'Мои лиды' }).click();

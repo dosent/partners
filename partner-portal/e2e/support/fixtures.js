@@ -64,7 +64,7 @@ export async function completePartnerOAuth(page, subject, startPath = '/api/v1/a
 }
 
 export async function loginAsPartner(page, subject) {
-  await page.goto('/');
+  // Start OAuth before mounting the app: its anonymous session request can replace the state cookie.
   await completePartnerOAuth(page, subject);
   return page;
 }

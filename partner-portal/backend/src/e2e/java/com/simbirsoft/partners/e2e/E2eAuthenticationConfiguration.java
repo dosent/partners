@@ -8,8 +8,6 @@ import com.simbirsoft.partners.access.application.StaffAuthenticator;
 import com.simbirsoft.partners.access.application.StaffIdentity;
 import com.simbirsoft.partners.access.application.YandexIdentityProvider;
 import com.simbirsoft.partners.document.application.MalwareScanner;
-import com.simbirsoft.partners.document.application.ObjectStorage;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,21 +42,6 @@ public class E2eAuthenticationConfiguration {
                 throw new IdentityProviderFailureException("Invalid e2e partner authorization code");
             }
             return new ExternalIdentity("YANDEX", code);
-        };
-    }
-
-    @Bean
-    @Primary
-    ObjectStorage e2eObjectStorage() {
-        var objects = new ConcurrentHashMap<String, byte[]>();
-        return new ObjectStorage() {
-            @Override public void put(String key, byte[] content, String contentType) { objects.put(key, content.clone()); }
-            @Override public byte[] get(String key) {
-                byte[] content = objects.get(key);
-                if (content == null) throw new IllegalStateException("Stored attachment was not found");
-                return content.clone();
-            }
-            @Override public void delete(String key) { objects.remove(key); }
         };
     }
 
