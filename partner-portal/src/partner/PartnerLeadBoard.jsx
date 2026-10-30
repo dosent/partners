@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ArrowRight, CalendarBlank, CaretDown, CaretLeft, CaretRight, ChatCircleText, Clock, MagnifyingGlass, Plus, X } from '@phosphor-icons/react';
 import { createPartnerLead, getPartnerLead, getPartnerLeadAttachmentUrl, getPartnerLeadBoard, sendPartnerLeadMessage } from '../api/partnerLeadsApi';
 import './PartnerLeadBoard.css';
+import { PartnerPageHeading } from './PartnerPageHeading';
 
 const LANES = [
   { id: 'NEW', title: 'Новый', tone: 'blue' },
@@ -173,7 +174,7 @@ function LeadDetails({ leadId, onClose }) {
   </div>;
 }
 
-export function PartnerLeadBoard() {
+export function PartnerLeadBoard({ title = 'Мои лиды' }) {
   const [columns, setColumns] = useState(() => LANES.map(lane => ({ ...lane, items: [], total: 0, nextCursor: null })));
   const [query, setQuery] = useState('');
   const [from, setFrom] = useState('');
@@ -227,26 +228,27 @@ export function PartnerLeadBoard() {
   async function created() { setCreating(false); setStatusFilter(''); setSelectedLane('NEW'); setReload(value=>value+1); }
 
   return <section className="partner-lead-board" aria-label="Доска лидов">
+    <PartnerPageHeading title={title}><button type="button" className="plb-primary" onClick={()=>setCreating(true)}><Plus size={18}/>Добавить лид</button></PartnerPageHeading>
     <div className="plb-toolbar">
       <div className="plb-search"><MagnifyingGlass size={19}/><input type="search" aria-label="Поиск лидов" placeholder="Компания, запрос, домен или ИНН" value={query} onChange={event=>setQuery(event.target.value)}/>{query&&<button aria-label="Очистить поиск" onClick={()=>setQuery('')}><X size={16}/></button>}</div>
       <label className="plb-filter"><span>Обновлён с</span><input aria-label="Обновлён с" type="date" value={from} max={to||undefined} onChange={event=>setFrom(event.target.value)}/></label>
       <label className="plb-filter"><span>по</span><input aria-label="Обновлён по" type="date" value={to} min={from||undefined} onChange={event=>setTo(event.target.value)}/></label>
       <label className="plb-status-filter"><span className="sr-only">Фильтр по этапу</span><select aria-label="Фильтр по этапу" value={statusFilter} onChange={event=>{setStatusFilter(event.target.value);if(event.target.value)setSelectedLane(event.target.value==='LOST'||event.target.value==='REJECTED'?'CLOSED':event.target.value);}}><option value="">Все этапы</option>{LANES.flatMap(lane=>lane.id==='CLOSED'?[{id:'LOST',title:'Закрыт · не реализован'},{id:'REJECTED',title:'Закрыт · отклонён'}]:[{id:lane.id,title:lane.title}]).map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</select><CaretDown size={16}/></label>
       {(query||from||to||statusFilter)&&<button className="plb-clear" onClick={resetFilters}>Сбросить</button>}
-      <span className="plb-total">{total} {total===1?'лид':'лидов'}</span><button type="button" className="plb-primary plb-desktop-add" onClick={()=>setCreating(true)}><Plus size={18}/>Добавить лид</button>
+      <span className="plb-total">{total} {total===1?'лид':'лидов'}</span>
     </div>
     <div className="plb-mobile-lanes" role="group" aria-label="Этапы лидов">{visibleColumns.map(column=><button key={column.id} type="button" className={selectedLane===column.id?'is-selected':''} aria-pressed={selectedLane===column.id} onClick={()=>setSelectedLane(column.id)}>{column.title}<span>{column.total}</span></button>)}</div>
     {error&&<div className="plb-board-error" role="alert"><span>{error}</span><button className="plb-secondary" onClick={()=>setReload(value=>value+1)}><ArrowCounterClockwise size={16}/>Повторить</button></div>}
     {loading&&!loaded?<div className="plb-board-loading" role="status" aria-busy="true"><span className="plb-spinner"/>Загружаем ваши лиды…</div>:null}
-    {!loading&&loaded&&!error&&columns.every(column=>column.total===0)&&<div className="plb-empty"><span className="plb-empty-icon"><CalendarBlank size={25}/></span><h2>{query||from||to||statusFilter?'Лиды не найдены':'Здесь появятся ваши лиды'}</h2><p>{query||from||to||statusFilter?'Попробуйте изменить запрос или фильтры.':'Передайте менеджеру новую возможность — он поможет провести её по этапам.'}</p>{query||from||to||statusFilter?<button className="plb-secondary" onClick={resetFilters}>Сбросить фильтры</button>:<button className="plb-primary" onClick={()=>setCreating(true)}><Plus size={18}/>Добавить первый лид</button>}</div>}
-    <div className={`plb-board ${loading&&!loaded?'is-loading':''}`}>
+    {!loading&&loaded&&!error&&columns.every(column=>column.total===0)&&<div className="plb-empty"><span className="plb-empty-icon"><CalendarBlank size={25}/></span><h2>{query||from||to||statusFilter?'Лиды не найдены':'Здесь появятся ваши лиды'}</h2><p>{query||from||to||statusFilter?'Попробуйте изменить запрос или фильтры.':'Передайте менеджеру новую возможность — он поможет провести её по этапам.'}</p>{query||from||to||statusFilter?<button className="plb-secondary" onClick={resetFilters}>Сбросить фильтры</button>:null}</div>}
+    {(total>0||statusFilter)&&<div className={`plb-board ${loading&&!loaded?'is-loading':''}`}>
       {visibleColumns.map(column=><section className={`plb-lane plb-lane-${column.tone} ${selectedLane===column.id?'is-selected':''}`} key={column.id} aria-label={`${column.title}, ${column.total} лидов`}>
         <header className="plb-lane-heading"><span className="plb-lane-marker"/><h2>{column.title}</h2><span className="plb-count" aria-label={`${column.total} всего`}>{column.total}</span><button type="button" className="plb-add-inline" aria-label="Добавить лид" onClick={()=>setCreating(true)}><Plus size={17}/></button></header>
         <div className="plb-lane-cards">{column.items.map((lead,index)=><BoardCard key={lead.id??`${lead.number}-${index}`} lead={lead} onSelect={item=>setSelectedLead(item.id??item.leadId)}/>)}</div>
         {column.items.length===0&&!loading&&loaded&&<p className="plb-lane-empty">Нет лидов на этом этапе</p>}
         {column.nextCursor&&<button type="button" className="plb-more" onClick={()=>loadMore(column)}>Показать ещё <CaretDown size={16}/></button>}
       </section>)}
-    </div>
+    </div>}
     {columns.length>0&&total>0&&<div className="plb-board-caption">Показаны лиды текущего партнёра · статусы обновляет менеджер SimbirSoft</div>}
     <div className="plb-mobile-controls" aria-label="Переключение этапов"><button aria-label="Предыдущий этап" onClick={()=>{const i=visibleColumns.findIndex(c=>c.id===selectedLane);setSelectedLane(visibleColumns[Math.max(i-1,0)]?.id??'NEW');}} disabled={visibleColumns.findIndex(c=>c.id===selectedLane)<=0}><CaretLeft size={19}/></button><span>{visibleColumns.findIndex(c=>c.id===selectedLane)+1} / {visibleColumns.length}</span><button aria-label="Следующий этап" onClick={()=>{const i=visibleColumns.findIndex(c=>c.id===selectedLane);setSelectedLane(visibleColumns[Math.min(i+1,visibleColumns.length-1)]?.id??'NEW');}} disabled={visibleColumns.findIndex(c=>c.id===selectedLane)>=visibleColumns.length-1}><CaretRight size={19}/></button></div>
     <button className="plb-mobile-add" onClick={()=>setCreating(true)}><Plus size={18}/>Добавить лид</button>

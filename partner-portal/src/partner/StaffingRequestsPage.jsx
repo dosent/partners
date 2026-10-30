@@ -4,6 +4,7 @@ import { getAllPartnerLeads } from '../api/partnerLeadsApi';
 import { createPartnerStaffingRequest, getPartnerStaffingRequest, getPartnerStaffingRequests, uploadPartnerStaffingAttachment } from '../api/staffingRequestsApi';
 import { createRequestId } from '../utils/requestId.js';
 import './StaffingRequestsPage.css';
+import { PartnerPageHeading } from './PartnerPageHeading';
 
 const initial = () => ({ leadId: '', title: '', headcount: '1', grade: '', requiredSkills: '', preferredSkills: '',
   taskDescription: '', hoursPerWeek: '40', mode: 'REMOTE', location: '', workOutsideRussiaAllowed: false,
@@ -105,14 +106,14 @@ export function StaffingRequestsPage({ text = key => key, locale = 'RU' }) {
 
   if (view === 'success' && receipt) return <section className="staffing-page">
     <div className="staffing-receipt"><span className="staffing-receipt-mark" aria-hidden="true">✓</span><p className="staffing-eyebrow">{t('success.eyebrow')}</p>
-      <h2>{receipt.number}</h2><p>{t('success.status')}: {t(`status.${receipt.status}`)}</p>
+      <h1>{receipt.number}</h1><p>{t('success.status')}: {t(`status.${receipt.status}`)}</p>
       {failedFiles.length > 0 && <div className="staffing-error" role="alert"><p>{t('success.uploadFailed')}</p><ul>{failedFiles.map(item => <li key={item.kind}>{item.file.name}: {item.message}</li>)}</ul><button className="staffing-inline" disabled={saving} onClick={retryFailedFiles}>{t('success.retryUpload')}</button></div>}
       <div className="staffing-actions"><button className="staffing-secondary" onClick={() => setView('list')}>{t('success.list')}</button><button className="staffing-primary" onClick={beginCreate}><Plus size={18}/>{t('success.new')}</button></div>
     </div></section>;
 
   if (view === 'form') return <section className="staffing-page">
     <button className="staffing-back" type="button" onClick={() => setView('list')}><ArrowLeft size={17}/> {t('form.back')}</button>
-    <div className="staffing-form-heading"><p className="staffing-eyebrow">{t('form.eyebrow')}</p><h2>{t('form.title')}</h2><p>{t('form.description')}</p></div>
+    <PartnerPageHeading title={t('form.title')} description={t('form.description')}/>
     <form className="staffing-form" onSubmit={submit}>
       <fieldset><legend><span>01</span> {t('form.context')}</legend>
         <label className="staffing-wide">{t('form.project')} <b>*</b><select required value={form.leadId} onChange={e => update('leadId', e.target.value)}><option value="">{t('form.projectPlaceholder')}</option>{leads.map(lead => <option key={lead.id} value={lead.id}>{lead.companyName} — {lead.requestSummary}</option>)}</select>{fieldErrors.leadId&&<small className="staffing-field-error">{t('errors.field')}</small>}<small>{t('form.projectHelp')}</small></label>
@@ -150,9 +151,9 @@ export function StaffingRequestsPage({ text = key => key, locale = 'RU' }) {
   </section>;
 
   return <section className="staffing-page">
-    <div className="staffing-list-heading"><div><p className="staffing-eyebrow">{t('list.eyebrow')}</p><h2>{t('list.title')}</h2><p>{t('list.description')}</p></div><button className="staffing-primary" onClick={beginCreate}><Plus size={18}/>{t('list.create')}</button></div>
+    <PartnerPageHeading title={t('list.title')} description={t('list.description')}><button className="staffing-primary" onClick={beginCreate}><Plus size={18}/>{t('list.create')}</button></PartnerPageHeading>
     {error && <p className="staffing-error" role="alert">{error}<button className="staffing-inline" onClick={reload}>{t('errors.retry')}</button></p>}
-    {loading ? <div className="staffing-empty" role="status">{t('list.loading')}</div> : items.length ? <div className="staffing-list">{items.map(item => <article className="staffing-card" key={item.id}><div className="staffing-card-top"><span>{item.number}</span><span className="staffing-status">{t(`status.${item.status}`)}</span></div><h3>{item.role?.title}</h3><p>{item.role?.grade} · {item.role?.headcount} · {item.work?.hoursPerWeek}</p><div className="staffing-card-bottom"><span>{item.role?.requiredSkills?.join(' · ')}</span><time>{t('list.submitted')}: {dateLabel(item.createdAt, locale)} · {item.work?.location}</time></div><button className="staffing-inline" onClick={async()=>{setAttachmentErrors(current=>({...current,[item.id]:false}));try{const result=await getPartnerStaffingRequest(item.id);setAttachments(current=>({...current,[item.id]:result.attachments??[]}));}catch{setAttachmentErrors(current=>({...current,[item.id]:true}));}}}>{t('list.files')}</button>{attachmentErrors[item.id]&&<p className="staffing-error" role="alert">{t('errors.unavailable')}</p>}{(attachments[item.id]??[]).map(file=><a className="staffing-file-link" key={file.id} href={`/api/v1/partner/staffing-requests/${item.id}/attachments/${file.id}`}>{file.fileName}</a>)}</article>)}</div> : <div className="staffing-empty"><span className="staffing-empty-icon"><Plus size={24}/></span><h3>{t('list.emptyTitle')}</h3><p>{t('list.emptyDescription')}</p><button className="staffing-primary" onClick={beginCreate}>{t('list.create')}<ArrowRight size={18}/></button></div>}
+    {loading ? <div className="staffing-empty" role="status">{t('list.loading')}</div> : items.length ? <div className="staffing-list">{items.map(item => <article className="staffing-card" key={item.id}><div className="staffing-card-top"><span>{item.number}</span><span className="staffing-status">{t(`status.${item.status}`)}</span></div><h3>{item.role?.title}</h3><p>{item.role?.grade} · {item.role?.headcount} · {item.work?.hoursPerWeek}</p><div className="staffing-card-bottom"><span>{item.role?.requiredSkills?.join(' · ')}</span><time>{t('list.submitted')}: {dateLabel(item.createdAt, locale)} · {item.work?.location}</time></div><button className="staffing-inline" onClick={async()=>{setAttachmentErrors(current=>({...current,[item.id]:false}));try{const result=await getPartnerStaffingRequest(item.id);setAttachments(current=>({...current,[item.id]:result.attachments??[]}));}catch{setAttachmentErrors(current=>({...current,[item.id]:true}));}}}>{t('list.files')}</button>{attachmentErrors[item.id]&&<p className="staffing-error" role="alert">{t('errors.unavailable')}</p>}{(attachments[item.id]??[]).map(file=><a className="staffing-file-link" key={file.id} href={`/api/v1/partner/staffing-requests/${item.id}/attachments/${file.id}`}>{file.fileName}</a>)}</article>)}</div> : <div className="staffing-empty"><span className="staffing-empty-icon"><Plus size={24}/></span><h3>{t('list.emptyTitle')}</h3><p>{t('list.emptyDescription')}</p></div>}
     {!loading&&items.length>0&&<div className="staffing-list-actions">{hasMore&&<button className="staffing-secondary" onClick={loadMore}>{t('list.more')}</button>}<button className="staffing-refresh" onClick={reload}><ArrowsClockwise size={16}/>{t('list.refresh')}</button></div>}
   </section>;
 }
