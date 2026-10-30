@@ -151,7 +151,7 @@ test('staff approval makes the partner portal available without demo data', asyn
       const response = await route.fetch();
       const content = await response.json();
       for (const key of Object.keys(content.strings ?? {})) {
-        if (key.startsWith('portal.profile.') || key.startsWith('portal.apiKeys.') || key.startsWith('portal.actions.') || key.startsWith('staffing.') || key === 'portal.errors.logout') delete content.strings[key];
+        if (key.startsWith('portal.profile.') || key.startsWith('portal.apiKeys.') || key.startsWith('portal.actions.') || key.startsWith('staffing.') || key.startsWith('candidates.') || key === 'portal.errors.logout') delete content.strings[key];
       }
       expect(Object.keys(content.strings)).toHaveLength(50);
       await route.fulfill({ response, body: JSON.stringify(content) });
