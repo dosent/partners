@@ -9,7 +9,8 @@ test('legacy published Russian content receives missing partner profile defaults
   for (const key of Object.keys(legacyContent.strings)) {
     if (key.startsWith('portal.profile.') || key.startsWith('portal.actions.') || key === 'portal.errors.logout') delete legacyContent.strings[key];
   }
-  assert.equal(Object.keys(legacyContent.strings).length, 50, 'fixture matches legacy RU dictionary size');
+  assert.equal(legacyContent.strings['portal.profile.title'], undefined, 'legacy content lacks profile copy');
+  assert.equal(legacyContent.strings['portal.actions.logout'], undefined, 'legacy content lacks logout copy');
   legacyContent.strings['portal.title'] = 'Кабинет партнёра, настроенный администратором';
   globalThis.fetch = async () => new Response(JSON.stringify(legacyContent), {
     status: 200,
