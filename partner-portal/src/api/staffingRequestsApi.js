@@ -1,3 +1,5 @@
+import { createRequestId } from '../utils/requestId.js';
+
 const API = '/api/v1/partner/staffing-requests';
 
 async function decode(response) {
@@ -24,7 +26,7 @@ export async function getPartnerStaffingRequests({ page = 0, size = 20 } = {}) {
 export async function getPartnerStaffingRequest(id) {
   return decode(await fetch(`${API}/${encodeURIComponent(id)}`, { credentials: 'include' }));
 }
-export async function createPartnerStaffingRequest(payload, idempotencyKey = crypto.randomUUID()) {
+export async function createPartnerStaffingRequest(payload, idempotencyKey = createRequestId()) {
   const csrf = await csrfHeaders();
   return decode(await fetch(API, { method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey, ...csrf },

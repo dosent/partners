@@ -139,6 +139,10 @@ test('staffing request assignment persists and enforces staff roles without part
     approvedPartner = await registerAndApprovePartner(browser, adminPage, partner);
     const lead = await createLeadViaApi(approvedPartner.context.request, partner, `assignment-${partner.id.slice(-8)}`);
     const partnerPage = approvedPartner.page;
+    // HTTP staging does not expose randomUUID; keep the real getRandomValues API.
+    await partnerPage.evaluate(() => {
+      Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+    });
     await partnerPage.getByRole('navigation', { name: 'Партнёрский портал' })
       .getByRole('button', { name: 'Заявки на специалистов' }).click();
     await partnerPage.getByRole('button', { name: 'Создать заявку' }).click();
